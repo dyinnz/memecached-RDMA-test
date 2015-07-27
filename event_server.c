@@ -244,7 +244,7 @@ int main() {
         return -1;
     }
 
-    if ( -1 != (xio_fd = xio_context_get_poll_fd(context)) ) {
+    if ( -1 == (xio_fd = xio_context_get_poll_fd(context)) ) {
         perror("xio_context_get_poll_fd");
         return -1;
     }
