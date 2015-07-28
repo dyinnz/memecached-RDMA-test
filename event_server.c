@@ -90,19 +90,19 @@ on_msg(struct xio_session *session, struct xio_msg *msg, int last_in_rxq,
     struct xio_iovec_ex     *sglist = vmsg_sglist(&msg->in);
     char                    *str = NULL;
     int                     nents = vmsg_sglist_nents(&msg->in);
-    int                     len = 0, i = 0;
+    int                     i = 0;
 
     printf("on_msg");
 
     str = msg->in.header.iov_base;
-    len = msg->in.header.iov_len;
+    //len = msg->in.header.iov_len;
     if (str) {
         printf("message header: %s\n", str);
     }
 
     for (i = 0; i < nents; ++i) {
         str = sglist[i].iov_base;
-        len = sglist[i].iov_len;
+        //len = sglist[i].iov_len;
         if (str) {
             printf("message header: %s\n", str);
         }
@@ -227,40 +227,41 @@ xio_event_handler(int fd, short event_flag, void *arg) {
  *----------------------------------------------------------------------------*/
 
 int main() {
-    struct xio_context      *context = NULL;
     struct xio_server       *server = NULL;
 
     struct event_base       *base = NULL;
     struct event            main_event;
 
-    struct server_data      *server_data;
+    struct server_data      server_data;
 
     int         xio_fd = 0;
 
+    memset(&server_data, 0, sizeof(struct server_data));
+
     xio_init();
 
-    if ( !(context = xio_context_create(NULL, 0, -1)) ) {
+    if ( !(server_data.context = xio_context_create(NULL, 0, -1)) ) {
         perror("xio_context_create");
         return -1;
     }
 
-    if ( -1 == (xio_fd = xio_context_get_poll_fd(context)) ) {
+    if ( -1 == (xio_fd = xio_context_get_poll_fd(server_data.context)) ) {
         perror("xio_context_get_poll_fd");
         return -1;
     }
 
-    if ( !(server = xio_bind(context, &server_ops, "rdma://127.0.0.1:5555", NULL, 0, &server_data)) ) {
+    if ( !(server = xio_bind(server_data.context, &server_ops, "rdma://127.0.0.1:5555", NULL, 0, &server_data)) ) {
         perror("xio_bind");
         return -1;
     }
 
-    server_data->send_msg = calloc(0, sizeof(struct xio_msg));
-    server_data->send_msg->out.header.iov_base = send_buff;
-    server_data->send_msg->out.header.iov_len = sizeof(send_buff);
+    server_data.send_msg = calloc(0, sizeof(struct xio_msg));
+    server_data.send_msg->out.header.iov_base = send_buff;
+    server_data.send_msg->out.header.iov_len = sizeof(send_buff);
 
     base = event_base_new();
     memset(&main_event, 0, sizeof(struct event));
-    event_assign(&main_event, base, xio_fd, EV_READ | EV_PERSIST, xio_event_handler, &context);
+    event_assign(&main_event, base, xio_fd, EV_READ | EV_PERSIST, xio_event_handler, server_data.context);
 
     event_add(&main_event, NULL);
     event_base_dispatch(base);
@@ -268,8 +269,10 @@ int main() {
     // Release
     event_base_free(base);
     xio_unbind(server);
-    xio_context_destroy(context);
+    xio_context_destroy(server_data.context);
     xio_shutdown();
+
+    free(server_data.send_msg);
 
     return 0;
 }
