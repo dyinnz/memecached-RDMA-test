@@ -34,9 +34,11 @@ on_session_event(struct xio_session             *session,
         break;
     case XIO_SESSION_CONNECTION_TEARDOWN_EVENT:
         xio_connection_destroy(event_data->conn);
+        server_data->connection = NULL;
         break;
     case XIO_SESSION_TEARDOWN_EVENT:
         xio_session_destroy(session);
+        xio_context_stop_loop(server_data->context);
         break;
     default:
         break;
@@ -91,13 +93,14 @@ on_msg(struct xio_session *session, struct xio_msg *msg, int last_in_rxq,
     char                    *str = NULL;
     int                     nents = vmsg_sglist_nents(&msg->in);
     int                     i = 0;
+    int                     len = 0;
 
-    printf("on_msg");
+    printf("on_msg\n");
 
     str = msg->in.header.iov_base;
     //len = msg->in.header.iov_len;
     if (str) {
-        printf("message header: %s\n", str);
+        printf("message header: %s, %d\n", str, nents);
     }
 
     for (i = 0; i < nents; ++i) {
@@ -110,7 +113,10 @@ on_msg(struct xio_session *session, struct xio_msg *msg, int last_in_rxq,
 
     vmsg_sglist_set_nents(&msg->in, 0);
 
+    server_data->send_msg->request = msg;
     xio_send_response(server_data->send_msg);
+
+    printf("msg end.\n");
 
     return 0;
 }
