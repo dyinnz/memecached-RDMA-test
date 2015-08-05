@@ -1,3 +1,8 @@
+/***************************************************************************//**
+ * @file server.h
+ *
+ ******************************************************************************/
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,10 +16,24 @@
 
 #define MAXLEN 16
 
+
+/***************************************************************************//**
+ *  Global settings
+ *
+ ******************************************************************************/
 struct Setting {
-    int         cq_number;
-    char        listen_port[10];    /* 10 is enough to hold the port */
+    /** the number of complete queue entries */
+    int         cq_number;              
+
+    /** 10 is enough to hold the port */
+    char        listen_port[10];    
 };
+
+
+/***************************************************************************//**
+ * The thread scope context
+ *
+ ******************************************************************************/
 
 struct RDMAContext {
     struct ibv_context          *device_context;
@@ -28,6 +47,12 @@ struct RDMAContext {
     struct event_base           *base;
     struct event                listen_event;
 };
+
+
+/***************************************************************************//**
+ * The information around cm needed by the new connection
+ *
+ ******************************************************************************/
 
 struct CMInformation {
     struct rdma_cm_id           *id;
@@ -44,10 +69,15 @@ struct CMInformation {
 void rdma_cm_event_handle(int fd, short lib_event, void *arg);
 void poll_event_handle(int fd, short lib_event, void *arg);
 
-/******************************************************************************
- * Test
+
+/***************************************************************************//**
+ * Some temporary code for testing
  *
- *****************************************************************************/
+ ******************************************************************************/
+
+/**
+ * test
+ */
 
 char   recv_msg[MAXLEN] = "recive test!";
 char   send_msg[MAXLEN] = "send test!";
@@ -55,25 +85,25 @@ char   send_msg[MAXLEN] = "send test!";
 struct RDMAContext *g_rdma_context = NULL;
 struct Setting *g_setting = NULL;
 
-/******************************************************************************
+/*******************************************************************************
  * Description
  * Init struct Setting with default
  *
- *****************************************************************************/
+ ******************************************************************************/
 void 
 init_setting_with_default(struct Setting *setting) {
     setting->cq_number = 1024;
     strcpy(setting->listen_port, "5555");
 }
 
-/******************************************************************************
- *
+
+/***************************************************************************//**
  * Description
  * Release all resources
  *
  ******************************************************************************/
- 
-void release_resources(struct Setting *setting, struct RDMAContext *context) {
+void 
+release_resources(struct Setting *setting, struct RDMAContext *context) {
     event_base_free(context->base);
 
     rdma_destroy_id(context->listen_id); 
@@ -87,14 +117,15 @@ void release_resources(struct Setting *setting, struct RDMAContext *context) {
     free(context);
 }
 
-/******************************************************************************
+
+/***************************************************************************//**
  * Return
  * 0 on success, -1 on failure
  *
  * Description
  * Init resources required for listening, and build listeninng.
  *
- *****************************************************************************/
+ ******************************************************************************/
 int
 init_rdma_listen(struct Setting *setting, struct RDMAContext *context) {
     struct rdma_addrinfo    hints,
@@ -143,14 +174,15 @@ init_rdma_listen(struct Setting *setting, struct RDMAContext *context) {
     return 0;
 }
 
-/******************************************************************************
+
+/***************************************************************************//**
  * Return
  * 0 on success, -1 on failure
  *
  * Description
  * Create shared resources for RDMA operations
  *
- *****************************************************************************/
+ ******************************************************************************/
 int
 init_rdma_shared_resources(struct Setting *setting, struct RDMAContext *context) {
 
@@ -173,11 +205,12 @@ init_rdma_shared_resources(struct Setting *setting, struct RDMAContext *context)
     return 0;
 }
 
-/******************************************************************************
+
+/***************************************************************************//**
  * Description
  * Create shared resources for RDMA operations
  *
- *****************************************************************************/
+ ******************************************************************************/
 int
 init_and_dispatch_event(struct RDMAContext *context) {
     context->base = event_base_new();
@@ -196,11 +229,11 @@ init_and_dispatch_event(struct RDMAContext *context) {
 }
 
 
-/******************************************************************************
+/***************************************************************************//**
  * Description
  * Create cc, pd, and cq, remember releasing them
  *
- *****************************************************************************/
+ ******************************************************************************/
 int
 preamble_qp(struct ibv_context *device_context, struct CMInformation *info) {
 
@@ -228,11 +261,12 @@ preamble_qp(struct ibv_context *device_context, struct CMInformation *info) {
     return 0;
 }
 
-/******************************************************************************
+
+/***************************************************************************//**
  * Description
  * Release cc, pd, cq
  *
- *****************************************************************************/
+ ******************************************************************************/
 void
 release_cm_info(struct CMInformation *info) {
     ibv_destroy_cq(info->cq);
@@ -242,11 +276,12 @@ release_cm_info(struct CMInformation *info) {
     free(info);
 }
 
-/******************************************************************************
+
+/***************************************************************************//**
  * Description
  * Create qp with id, then complete the connection 
  *
- *****************************************************************************/
+ ******************************************************************************/
 void 
 handle_connect_request(struct rdma_cm_id *id) {
     struct CMInformation    *info = NULL;
@@ -298,10 +333,12 @@ handle_connect_request(struct rdma_cm_id *id) {
     printf("Comlete connection!\n");
 }
 
-/******************************************************************************
+
+/***************************************************************************//**
  * Description
+ * Set the connection event callback on libevent
  *
- *****************************************************************************/
+ ******************************************************************************/
 void
 establish_poll_handler(struct rdma_cm_id *id) {
     struct CMInformation *info = id->context;
@@ -314,10 +351,12 @@ establish_poll_handler(struct rdma_cm_id *id) {
     event_add(info->poll_event, NULL);
 }
 
-/******************************************************************************
+
+/***************************************************************************//**
  * Description
+ * Candle "work complete"
  *
- *****************************************************************************/
+ ******************************************************************************/
 void 
 handle_work_complete(struct ibv_wc *wc) {
     struct CMInformation *info = (struct CMInformation*)wc->wr_id;
@@ -345,10 +384,11 @@ handle_work_complete(struct ibv_wc *wc) {
     }
 }
 
-/******************************************************************************
+
+/***************************************************************************//**
  * Description
  *
- *****************************************************************************/
+ ******************************************************************************/
 void 
 poll_event_handle(int fd, short lib_event, void *arg) {
     struct CMInformation    *info = arg;
@@ -384,10 +424,11 @@ poll_event_handle(int fd, short lib_event, void *arg) {
     }
 }
 
-/******************************************************************************
+
+/***************************************************************************//**
  * Description
  *
- *****************************************************************************/
+ ******************************************************************************/
 void 
 rdma_cm_event_handle(int fd, short lib_event, void *arg) {
     struct rdma_cm_event    *cm_event = NULL;
@@ -446,7 +487,12 @@ rdma_cm_event_handle(int fd, short lib_event, void *arg) {
     rdma_ack_cm_event(cm_event);
 }
 
-int main(int argc, char *argv[]) {
+/***************************************************************************//**
+ * Main
+ *
+ ******************************************************************************/
+int 
+main(int argc, char *argv[]) {
 
     struct Setting      *setting = calloc(1, sizeof(struct Setting));
     struct RDMAContext  *context = calloc(1, sizeof(struct RDMAContext)); 
@@ -464,5 +510,4 @@ int main(int argc, char *argv[]) {
     release_resources(setting, context);
     return 0;
 }
-
 
