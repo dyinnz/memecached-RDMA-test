@@ -29,6 +29,9 @@ struct Setting {
     char        listen_port[10];    
 };
 
+char recv_buffs[1000][128];
+struct ibv_mr *recv_mrs[1000];
+
 
 /***************************************************************************//**
  * The thread scope context
@@ -306,6 +309,19 @@ handle_connect_request(struct rdma_cm_id *id) {
     }
 
     printf("Comlete connection!\n");
+
+    int i = 0;
+    for (i = 0; i < 1000; ++i) {
+        if ( !(recv_mrs[i] = rdma_reg_msgs(id, recv_buffs[i], 128)) ) {
+            perror("rdma_reg_msgs");
+            return;
+        }
+
+        if (0 != rdma_post_recv(id, info, recv_buffs[i], 128, recv_mrs[i])) {
+            perror("rdma_post_recv");
+            return;
+        }
+    }
 }
 
 /***************************************************************************//**
