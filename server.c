@@ -14,7 +14,7 @@
 
 #include <event.h>
 
-#define MAXLEN 16
+#define MAXLEN 1024
 
 
 /***************************************************************************//**
@@ -174,38 +174,6 @@ init_rdma_listen(struct Setting *setting, struct RDMAContext *context) {
     return 0;
 }
 
-
-/***************************************************************************//**
- * Return
- * 0 on success, -1 on failure
- *
- * Description
- * Create shared resources for RDMA operations
- *
- ******************************************************************************/
-int
-init_rdma_shared_resources(struct Setting *setting, struct RDMAContext *context) {
-
-    if ( !(context->comp_channel = ibv_create_comp_channel(context->device_context)) ) {
-        perror("ibv_create_comp_channel");
-        return -1;
-    }
-
-    if ( !(context->pd = ibv_alloc_pd(context->device_context)) ) {
-        perror("ibv_alloc_pd");
-        return -1;
-    }
-
-    if ( !(context->cq = ibv_create_cq(context->device_context, 
-                    setting->cq_number, NULL, context->comp_channel, 0)) ) {
-        perror("ibv_create_cq");
-        return -1;
-    }
-
-    return 0;
-}
-
-
 /***************************************************************************//**
  * Description
  * Create shared resources for RDMA operations
@@ -312,6 +280,19 @@ handle_connect_request(struct rdma_cm_id *id) {
         return;
     }
 
+    if (0 != rdma_accept(id, NULL)) {
+        release_cm_info(info);
+        perror("rdma_accept");
+        return;
+    }
+
+    info->poll_event = calloc(1, sizeof(struct event)); 
+
+    event_set(info->poll_event, info->comp_channel->fd, EV_READ | EV_PERSIST, 
+            poll_event_handle, info);
+    event_base_set(g_rdma_context->base, info->poll_event);
+    event_add(info->poll_event, NULL);
+
     if ( !(info->recv_mr = rdma_reg_msgs(id, recv_msg, MAXLEN)) ) {
         release_cm_info(info);
         perror("rdma_reg_msgs");
@@ -324,33 +305,8 @@ handle_connect_request(struct rdma_cm_id *id) {
         return;
     }
 
-    if (0 != rdma_accept(id, NULL)) {
-        release_cm_info(info);
-        perror("rdma_accept");
-        return;
-    }
-
     printf("Comlete connection!\n");
 }
-
-
-/***************************************************************************//**
- * Description
- * Set the connection event callback on libevent
- *
- ******************************************************************************/
-void
-establish_poll_handler(struct rdma_cm_id *id) {
-    struct CMInformation *info = id->context;
-
-    info->poll_event = calloc(1, sizeof(struct event)); 
-
-    event_set(info->poll_event, info->comp_channel->fd, EV_READ | EV_PERSIST, 
-            poll_event_handle, info);
-    event_base_set(g_rdma_context->base, info->poll_event);
-    event_add(info->poll_event, NULL);
-}
-
 
 /***************************************************************************//**
  * Description
@@ -447,21 +403,7 @@ rdma_cm_event_handle(int fd, short lib_event, void *arg) {
             break;
 
         case RDMA_CM_EVENT_ESTABLISHED:
-            info = (struct CMInformation*)(cm_event->id->context);
-
-            if ( !(info->send_mr = rdma_reg_msgs(cm_event->id, send_msg, MAXLEN)) ) {
-                perror("rdma_reg_msgs");
-                return;
-            }
-
-            if (0 != rdma_post_send(cm_event->id, info, send_msg, MAXLEN, 
-                        info->send_mr, IBV_SEND_SOLICITED)) {
-                perror("rdma_post_recv");
-                return;
-            }
-
-            establish_poll_handler(cm_event->id);
-            break;
+           break;
 
         case RDMA_CM_EVENT_DISCONNECTED:
             info = (struct CMInformation*)(cm_event->id->context);
@@ -503,7 +445,6 @@ main(int argc, char *argv[]) {
     init_setting_with_default(setting);
 
     if (0 != init_rdma_listen(setting, context)) return -1;
-/*    if (0 != init_rdma_shared_resources(setting, context)) return -1; */
     if (0 != init_and_dispatch_event(context)) return -1;
     
 
