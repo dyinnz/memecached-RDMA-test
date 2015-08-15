@@ -147,13 +147,13 @@ init_rdma_global_resources() {
             perror("ibv_reg_mr()");
             return -1;
         }
-        recv_sge[i].addr = (uint64_t)recv_buffs[i];
+        recv_sge[i].addr = (uintptr_t)recv_buffs[i];
         recv_sge[i].length = 128;
         recv_sge[i].lkey = recv_mrs[i]->lkey;
 
         recv_wrs[i].num_sge = 1;
         recv_wrs[i].sg_list = &recv_sge[i];
-        recv_wrs[i].wr_id = (uint64_t)&recv_mrs[i];
+        recv_wrs[i].wr_id = (uintptr_t)&recv_mrs[i];
         recv_wrs[i].next = NULL;
     }
 
