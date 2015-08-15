@@ -27,11 +27,15 @@ struct Setting {
 
     /** 10 is enough to hold the port */
     char        listen_port[10];    
+
 };
 
-char recv_buffs[1000][128];
-struct ibv_mr *recv_mrs[1000];
+#define REG_NUM 1000
 
+static char recv_buffs[REG_NUM][128];
+static struct ibv_mr *recv_mrs[REG_NUM];
+static struct ibv_recv_wr recv_wrs[REG_NUM];
+static struct ibv_sge recv_sge[REG_NUM];
 
 /***************************************************************************//**
  * The thread scope context
@@ -39,10 +43,12 @@ struct ibv_mr *recv_mrs[1000];
  ******************************************************************************/
 
 struct RDMAContext {
-    struct ibv_context          *device_context;
+    struct ibv_context          **ctx_list;
+    struct ibv_context          *ctx;
     struct ibv_comp_channel     *comp_channel;
     struct ibv_pd               *pd;
     struct ibv_cq               *cq;
+    struct ibv_srq              *srq;
     
     struct rdma_event_channel   *cm_channel;
     struct rdma_cm_id           *listen_id;
@@ -85,7 +91,7 @@ void poll_event_handle(int fd, short lib_event, void *arg);
 char   recv_msg[MAXLEN] = "recive test!";
 char   send_msg[MAXLEN] = "send test!";
 
-struct RDMAContext *g_rdma_context = NULL;
+struct RDMAContext *g_context = NULL;
 struct Setting *g_setting = NULL;
 
 /*******************************************************************************
@@ -99,6 +105,60 @@ init_setting_with_default(struct Setting *setting) {
     strcpy(setting->listen_port, "5555");
 }
 
+/***************************************************************************//**
+ * Description 
+ * Init rdma global resources
+ *
+ ******************************************************************************/
+int
+init_rdma_global_resources() {
+    int num_device;
+
+    if ( !(g_context->ctx_list = rdma_get_devices(&num_device)) ) {
+        perror("rdma_get_devices()");
+        return 0;
+    }
+    g_context->ctx = *g_context->ctx_list;
+
+    if ( !(g_context->comp_channel = ibv_create_comp_channel(g_context->ctx)) ) {
+        perror("ibv_create_comp_channel");
+        return -1;
+    }
+
+    if ( !(g_context->pd = ibv_alloc_pd(g_context->ctx)) ) {
+        perror("ibv_alloc_pd");
+        return -1;
+    }
+
+    if ( !(g_context->cq = ibv_create_cq(g_context->ctx, 
+                    g_setting->cq_number, NULL, g_context->comp_channel, 0)) ) {
+        perror("ibv_create_cq");
+        return -1;
+    }
+
+    if (0 != ibv_req_notify_cq(g_context->cq, 0)) {
+        perror("ibv_reg_notify_cq");
+        return -1;
+    }
+
+    int i = 0;
+    for (i = 0; i < REG_NUM; ++i) {
+        if (!(recv_mrs[i] = ibv_reg_mr(g_context->pd, recv_buffs[i], 128, IBV_ACCESS_LOCAL_WRITE))) {
+            perror("ibv_reg_mr()");
+            return -1;
+        }
+        recv_sge[i].addr = (uint64_t)recv_buffs[i];
+        recv_sge[i].length = 128;
+        recv_sge[i].lkey = recv_mrs[i]->lkey;
+
+        recv_wrs[i].num_sge = 1;
+        recv_wrs[i].sg_list = &recv_sge[i];
+        recv_wrs[i].wr_id = (uint64_t)&recv_mrs[i];
+        recv_wrs[i].next = NULL;
+    }
+
+    return 0;
+}
 
 /***************************************************************************//**
  * Description
@@ -293,7 +353,7 @@ handle_connect_request(struct rdma_cm_id *id) {
 
     event_set(info->poll_event, info->comp_channel->fd, EV_READ | EV_PERSIST, 
             poll_event_handle, info);
-    event_base_set(g_rdma_context->base, info->poll_event);
+    event_base_set(g_context->base, info->poll_event);
     event_add(info->poll_event, NULL);
 
     if ( !(info->recv_mr = rdma_reg_msgs(id, recv_msg, MAXLEN)) ) {
@@ -311,13 +371,9 @@ handle_connect_request(struct rdma_cm_id *id) {
     printf("Comlete connection!\n");
 
     int i = 0;
+    struct ibv_recv_wr *bad;
     for (i = 0; i < 1000; ++i) {
-        if ( !(recv_mrs[i] = rdma_reg_msgs(id, recv_buffs[i], 128)) ) {
-            perror("rdma_reg_msgs");
-            return;
-        }
-
-        if (0 != rdma_post_recv(id, info, recv_buffs[i], 128, recv_mrs[i])) {
+        if (0 != ibv_post_recv(id->qp, &recv_wrs[i], &bad)) {
             perror("rdma_post_recv");
             return;
         }
@@ -331,7 +387,8 @@ handle_connect_request(struct rdma_cm_id *id) {
  ******************************************************************************/
 void 
 handle_work_complete(struct ibv_wc *wc) {
-    struct CMInformation *info = (struct CMInformation*)wc->wr_id;
+    //struct CMInformation *info = (struct CMInformation*)wc->wr_id;
+    struct ibv_mr *mr = (struct ibv_mr*)wc->wr_id;
 
     if (IBV_WC_SUCCESS != wc->status) {
         printf("bad wc!\n");
@@ -339,13 +396,13 @@ handle_work_complete(struct ibv_wc *wc) {
     }
 
     if (IBV_WC_RECV & wc->opcode) {
-        printf("server has received: %s\n", (char*)info->recv_mr->addr);
+        printf("server has received: %s\n", (char*)mr->addr);
         return;
     }
 
     switch (wc->opcode) {
         case IBV_WC_SEND:
-            printf("server has sent: %s\n", (char*)info->send_mr->addr);
+            printf("server has sent: %s\n", (char*)mr->addr);
             break;
         case IBV_WC_RDMA_WRITE:
             break;
@@ -389,7 +446,7 @@ poll_event_handle(int fd, short lib_event, void *arg) {
         return;
     }
 
-    printf("Get cqe! %d\n", cqe);
+    //printf("Get cqe! %d\n", cqe);
 
     for (i = 0; i < cqe; ++i) {
         handle_work_complete(wc);
@@ -406,7 +463,7 @@ rdma_cm_event_handle(int fd, short lib_event, void *arg) {
     struct rdma_cm_event    *cm_event = NULL;
     struct CMInformation    *info = NULL;
 
-    if (0 != rdma_get_cm_event(g_rdma_context->cm_channel, &cm_event)) {
+    if (0 != rdma_get_cm_event(g_context->cm_channel, &cm_event)) {
         perror("rdma_get_cm_event");
         return;
     }
@@ -423,7 +480,7 @@ rdma_cm_event_handle(int fd, short lib_event, void *arg) {
 
         case RDMA_CM_EVENT_DISCONNECTED:
             info = (struct CMInformation*)(cm_event->id->context);
-            rdma_dereg_mr(info->send_mr);
+
             rdma_dereg_mr(info->recv_mr);
             release_cm_info(info);
 
@@ -455,7 +512,7 @@ main(int argc, char *argv[]) {
     struct Setting      *setting = calloc(1, sizeof(struct Setting));
     struct RDMAContext  *context = calloc(1, sizeof(struct RDMAContext)); 
 
-    g_rdma_context = context;
+    g_context = context;
     g_setting = setting;
 
     init_setting_with_default(setting);
