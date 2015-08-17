@@ -165,6 +165,10 @@ void test_one_recv() {
                 perror("ibv_poll_cq()");
                 return;
             }
+            if (IBV_WC_SUCCESS != wc.status) {
+                printf("Get bad wc!\n");
+                return;
+            }
         } while (cqe > 0);
 
         /*
