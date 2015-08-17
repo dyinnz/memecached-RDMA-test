@@ -268,6 +268,12 @@ init_and_dispatch_event(struct RDMAContext *context) {
 int
 preamble_qp(struct ibv_context *device_context, struct CMInformation *info) {
 
+    info->comp_channel = g_context->comp_channel;
+    info->pd = g_context->pd;
+    info->cq = g_context->cq;
+
+    return 0;
+
     if ( !(info->comp_channel = ibv_create_comp_channel(device_context)) ) {
         perror("ibv_create_comp_channel");
         return -1;
@@ -362,7 +368,7 @@ handle_connect_request(struct rdma_cm_id *id) {
         return;
     }
 
-    if (0 != rdma_post_recv(id, info, recv_msg, MAXLEN, info->recv_mr)) {
+    if (0 != rdma_post_recv(id, info->recv_mr, recv_msg, MAXLEN, info->recv_mr)) {
         release_cm_info(info);
         perror("rdma_post_recv");
         return;
@@ -388,7 +394,7 @@ handle_connect_request(struct rdma_cm_id *id) {
 void 
 handle_work_complete(struct ibv_wc *wc) {
     //struct CMInformation *info = (struct CMInformation*)wc->wr_id;
-    struct ibv_mr *mr = (struct ibv_mr*)wc->wr_id;
+    struct ibv_mr *mr = (struct ibv_mr*)(uintptr_t)wc->wr_id;
 
     if (IBV_WC_SUCCESS != wc->status) {
         printf("bad wc!\n");
@@ -517,9 +523,9 @@ main(int argc, char *argv[]) {
 
     init_setting_with_default(setting);
 
+    if (0 != init_rdma_global_resources()) return -1;
     if (0 != init_rdma_listen(setting, context)) return -1;
     if (0 != init_and_dispatch_event(context)) return -1;
-    
 
     release_resources(setting, context);
     return 0;
