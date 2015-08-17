@@ -84,10 +84,6 @@ int accpet_connection() {
         return -1;
     }
 
-    if (0 != rdma_accept(rdma_context.id, NULL)) {
-        perror("rdma_accept()");
-        return -1;
-    }
 
     /* init connection resources */
     int device_num = 0;
@@ -124,6 +120,14 @@ int accpet_connection() {
         return -1;
     }
 
+    if (0 != rdma_accept(rdma_context.id, NULL)) {
+        perror("rdma_accept()");
+        return -1;
+    }
+
+    printf("recv cq:%p\n", (void*)rdma_context.id->recv_cq);
+    rdma_context.id->recv_cq = rdma_context.cq;
+
     memset(&rdma_conn, 0, sizeof(struct rdma_conn));
     rdma_conn.ssize = rdma_conn.rsize = MAX_BUFF_SIZE;
     rdma_conn.sbuf = malloc(rdma_conn.ssize);
@@ -140,21 +144,35 @@ int accpet_connection() {
  * 
  ******************************************************************************/
 void test_one_recv() {
-    char *one_recv = malloc(MAX_BUFF_SIZE);
+
+//    char *one_recv = malloc(MAX_BUFF_SIZE);
+    char *one_recv = calloc(1, MAX_BUFF_SIZE);
     struct ibv_mr *recv_mr = rdma_reg_msgs(rdma_context.id, one_recv, MAX_BUFF_SIZE);
 
     int count = 0;
     struct ibv_wc wc;
+    int cqe = 0;
 
     while (1) {
         if (0 != rdma_post_recv(rdma_context.id, NULL, recv_mr->addr, recv_mr->length, recv_mr)) {
             perror("rdma_post_recv()");
             break;
         }
+
+        do {
+            cqe = ibv_poll_cq(rdma_context.cq, 1, &wc);
+            if (cqe < 0) {
+                perror("ibv_poll_cq()");
+                return;
+            }
+        } while (cqe > 0);
+
+        /*
         if (0 != rdma_get_recv_comp(rdma_context.id, &wc)) {
             perror("rdma_get_recv_comp()");
             break;
         }
+        */
 
         count += 1;
         if (count % 100 == 0) {
@@ -186,5 +204,6 @@ int main(int argc, char *argv[]) {
     }
 
     if (0 != accpet_connection()) return -1;
+    test_one_recv();
     return 0;
 }
