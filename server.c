@@ -388,7 +388,7 @@ handle_connect_request(struct rdma_cm_id *id) {
 void 
 handle_work_complete(struct ibv_wc *wc) {
     //struct CMInformation *info = (struct CMInformation*)wc->wr_id;
-    struct ibv_mr *mr = (struct ibv_mr*)wc->wr_id;
+    struct ibv_mr *mr = (struct ibv_mr*)(uintptr_t)wc->wr_id;
 
     if (IBV_WC_SUCCESS != wc->status) {
         printf("bad wc!\n");
