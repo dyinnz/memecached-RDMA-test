@@ -88,10 +88,10 @@ int accpet_connection() {
 	qp_attr.cap.max_recv_sge = 1;
 	qp_attr.sq_sig_all = 1;
 	qp_attr.qp_type = IBV_QPT_RC;
-	qp_attr.send_cq = rdma_context.cq;
-	qp_attr.recv_cq = rdma_context.cq;
+	//qp_attr.send_cq = rdma_context.cq;
+	//qp_attr.recv_cq = rdma_context.cq;
 
-    if (0 != rdma_create_ep(&rdma_context.listen_id, res, rdma_context.pd, &qp_attr)) {
+    if (0 != rdma_create_ep(&rdma_context.listen_id, res, NULL, &qp_attr)) {
         perror("rdma_create_ep()");
     }
 
@@ -121,7 +121,7 @@ int accpet_connection() {
     }
 
     printf("recv cq:%p\n", (void*)rdma_context.id->recv_cq);
-    // rdma_context.id->recv_cq = rdma_context.cq;
+    //rdma_context.id->recv_cq = rdma_context.cq;
 
     memset(&rdma_conn, 0, sizeof(struct rdma_conn));
     rdma_conn.ssize = rdma_conn.rsize = MAX_BUFF_SIZE;
@@ -148,12 +148,17 @@ void test_one_recv() {
     struct ibv_wc wc;
     int cqe = 0;
 
-    while (1) {
+    while (request_num--) {
+        if ('*' == one_recv[0]) {
+            printf("error\n");
+        }
+        one_recv[0] = '*';
         if (0 != rdma_post_recv(rdma_context.id, NULL, recv_mr->addr, recv_mr->length, recv_mr)) {
             perror("rdma_post_recv()");
             break;
         }
 
+        /*
         do {
             cqe = ibv_poll_cq(rdma_context.cq, 1, &wc);
             if (cqe < 0) {
@@ -164,17 +169,23 @@ void test_one_recv() {
                 printf("Get bad wc!\n");
                 return;
             }
-        } while (cqe > 0);
+        } while (cqe == 0);
+        */
 
-        /*
-        if (0 != rdma_get_recv_comp(rdma_context.id, &wc)) {
+        
+        cqe = rdma_get_recv_comp(rdma_context.id, &wc);
+        if (cqe < 0) {
             perror("rdma_get_recv_comp()");
             break;
         }
-        */
+        
+
+        if (cqe == 0) {
+            printf("cqe 0\n");
+        }
 
         count += 1;
-        if (count % 100 == 0) {
+        if (count % 500 == 0) {
             printf("RECV %d: %s\n", count, one_recv);
         }
     }

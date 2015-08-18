@@ -7,5 +7,5 @@ server: server.c
 	gcc server.c -o server ${CFLAGS} ${LDFLAGS}
 
 sync-server: sync-server.c
-	gcc sync-server.c -o sync-server ${CFLAGS} ${LDFLAGS}
+	gcc sync-server.c -o sync-server ${CFLAGS} ${LDFLAGS} -pg
 
