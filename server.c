@@ -117,7 +117,7 @@ init_rdma_global_resources() {
 
         recv_wrs[i].num_sge = 1;
         recv_wrs[i].sg_list = &recv_sge[i];
-        recv_wrs[i].wr_id = (uintptr_t)&recv_mrs[i];
+        recv_wrs[i].wr_id = (uintptr_t)recv_mrs[i];
         recv_wrs[i].next = NULL;
     }
 
@@ -252,8 +252,6 @@ handle_connect_request(struct rdma_cm_id *id) {
             poll_event_handle, c);
     event_base_set(rdma_ctx.base, &c->poll_event);
     event_add(&c->poll_event, NULL);
-
-    printf("Comlete connection!\n");
 
     int i = 0;
     struct ibv_recv_wr *bad;
