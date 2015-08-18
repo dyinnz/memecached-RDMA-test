@@ -47,45 +47,8 @@ struct rdma_conn {
  * 
  ******************************************************************************/
 int accpet_connection() {
-    memset(&rdma_context, 0, sizeof(struct rdma_context));
-
-    if (0 != rdma_create_id(NULL, &rdma_context.listen_id, NULL, RDMA_PS_TCP)) {
-        perror("rdma_create_id()");
-        return -1;
-    }
-
-    /* bind address */
-    struct rdma_addrinfo    hints,
-                            *res = NULL;
-    memset(&hints, 0, sizeof(struct rdma_addrinfo));
-
-    hints.ai_flags = RAI_PASSIVE;
-    hints.ai_port_space = RDMA_PS_TCP;
-    if (0 != rdma_getaddrinfo(NULL, port, &hints, &res)) {
-        perror("rdma_addrinfo()");
-        return -1;
-    }
-
-    if (0 != rdma_bind_addr(rdma_context.listen_id, res->ai_src_addr)) {
-        perror("rdma_bind_addr()");
-        return -1;
-    }
-
-    /* listen */
-    if (0 != rdma_listen(rdma_context.listen_id, backlog)) {
-        perror("rdma_listen()");
-        return -1;
-    }
-
-    printf("Listening on port %d\n", ntohs(rdma_get_src_port(rdma_context.listen_id)) );
-
-    if (0 != rdma_get_request(rdma_context.listen_id, &rdma_context.id)) {
-        perror("rdma_get_request()");
-        return -1;
-    }
-
-
     /* init connection resources */
+    memset(&rdma_context, 0, sizeof(struct rdma_context));
     int device_num = 0;
     if ( !(rdma_context.device_ctx_list = rdma_get_devices(&device_num)) ) {
         perror("rdma_get_devices():");
@@ -103,6 +66,19 @@ int accpet_connection() {
         perror("ibv_create_cq");
         return -1;
     }
+
+    /* bind address */
+    struct rdma_addrinfo    hints,
+                            *res = NULL;
+    memset(&hints, 0, sizeof(struct rdma_addrinfo));
+
+    hints.ai_flags = RAI_PASSIVE;
+    hints.ai_port_space = RDMA_PS_TCP;
+    if (0 != rdma_getaddrinfo(NULL, port, &hints, &res)) {
+        perror("rdma_addrinfo()");
+        return -1;
+    }
+
     /* create qp */
     struct ibv_qp_init_attr qp_attr;
     memset(&qp_attr, 0, sizeof(struct ibv_qp_init_attr));
@@ -115,10 +91,29 @@ int accpet_connection() {
 	qp_attr.send_cq = rdma_context.cq;
 	qp_attr.recv_cq = rdma_context.cq;
 
+    if (0 != rdma_create_ep(&rdma_context.listen_id, res, rdma_context.pd, &qp_attr)) {
+        perror("rdma_create_ep()");
+    }
+
+    /* listen */
+    if (0 != rdma_listen(rdma_context.listen_id, backlog)) {
+        perror("rdma_listen()");
+        return -1;
+    }
+
+    printf("Listening on port %d\n", ntohs(rdma_get_src_port(rdma_context.listen_id)) );
+
+    if (0 != rdma_get_request(rdma_context.listen_id, &rdma_context.id)) {
+        perror("rdma_get_request()");
+        return -1;
+    }
+
+    /*
     if (0 != rdma_create_qp(rdma_context.id, rdma_context.pd, &qp_attr)) {
         perror("rdma_create_qp()");
         return -1;
     }
+    */
 
     if (0 != rdma_accept(rdma_context.id, NULL)) {
         perror("rdma_accept()");
@@ -126,7 +121,7 @@ int accpet_connection() {
     }
 
     printf("recv cq:%p\n", (void*)rdma_context.id->recv_cq);
-    rdma_context.id->recv_cq = rdma_context.cq;
+    // rdma_context.id->recv_cq = rdma_context.cq;
 
     memset(&rdma_conn, 0, sizeof(struct rdma_conn));
     rdma_conn.ssize = rdma_conn.rsize = MAX_BUFF_SIZE;
