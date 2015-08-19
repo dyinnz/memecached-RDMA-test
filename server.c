@@ -21,15 +21,11 @@ struct rdma_cm_id *last_id;
  * Settings
  *
  ******************************************************************************/
-#define MAX_BUFF_SIZE 1024
 
-static int      backlog = 1024;
-static int      cq_size = 1024;
-static int      wr_size = 1024;
-static int      max_sge = 8;
-static char     *port = "5555";
-static int      request_num = 1000;
-static int      verbose = 0;
+#define MAX_BUFF_SIZE 1024
+#define REG_PER_CONN 10
+#define REG_NUM 10
+#define REG_SIZE 128
 
 struct rdma_context {
     struct ibv_context          **device_ctx_list;
@@ -53,16 +49,21 @@ struct rdma_conn {
     char                    *sbuf;
     size_t                  ssize;
 
-    struct ibv_mr           *rmr_list;
-    char                    *rbuf_list;
+    struct ibv_mr           **rmr_list;
+    char                    **rbuf_list;
     size_t                  rsize; 
+    size_t                  buff_list_size;
 
     struct event            poll_event;
 };
 
-
-#define REG_NUM 10
-#define REG_SIZE 128
+static int      backlog = 1024;
+static int      cq_size = 1024;
+static int      wr_size = 1024;
+static int      max_sge = 8;
+static char     *port = "5555";
+static int      request_num = 1000;
+static int      verbose = 0;
 
 static char recv_buffs[REG_NUM][REG_SIZE];
 static struct ibv_mr *recv_mrs[REG_NUM];
@@ -210,6 +211,15 @@ void
 release_conn(struct rdma_conn *c) {
     if (c->smr) rdma_dereg_mr(c->smr);
     if (c->sbuf) free(c->sbuf);
+
+    int i = 0;
+    for (i = 0; i < c->buff_list_size; ++i) {
+        rdma_dereg_mr(c->rmr_list[i]);
+        free(c->rbuf_list[i]);
+    }
+    if (c->rmr_list) free(c->rmr_list);
+    if (c->rbuf_list) free(c->rbuf_list);
+
     free(c);
 }
 
@@ -245,6 +255,8 @@ handle_connect_request(struct rdma_cm_id *id) {
         perror("rdma_accept");
         return -1;
     }
+    /* temp */
+    last_id = id;
 
     event_set(&c->poll_event, rdma_ctx.comp_channel->fd, EV_READ | EV_PERSIST, 
             poll_event_handle, c);
@@ -252,6 +264,7 @@ handle_connect_request(struct rdma_cm_id *id) {
     event_add(&c->poll_event, NULL);
 
     int i = 0;
+    /*
     struct ibv_recv_wr *bad;
     for (i = 0; i < REG_NUM; ++i) {
         if (0 != ibv_post_recv(id->qp, &recv_wrs[i], &bad)) {
@@ -259,8 +272,21 @@ handle_connect_request(struct rdma_cm_id *id) {
             return -1;
         }
     }
+    */
 
-    last_id = id;
+    c->buff_list_size = REG_PER_CONN;
+    c->rsize = MAX_BUFF_SIZE;
+    c->rbuf_list = calloc(c->buff_list_size, sizeof(char*));
+    c->rmr_list = calloc(c->buff_list_size, sizeof(struct ibv_mr*));
+
+    for (i = 0; i < c->buff_list_size; ++i) {
+        c->rbuf_list[i] = malloc(c->rsize);
+        c->rmr_list[i] = rdma_reg_msgs(id, c->rbuf_list[i], c->rsize);
+        if (0 != rdma_post_recv(id, c->rmr_list[i], c->rmr_list[i]->addr, c->rmr_list[i]->length, c->rmr_list[i])) {
+            perror("rdma_post_recv()");
+            return -1;
+        }
+    }
 
     return 0;
 }
