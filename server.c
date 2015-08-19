@@ -140,10 +140,13 @@ init_rdma_global_resources() {
  ******************************************************************************/
 int
 init_rdma_listen() {
+    if (0 != rdma_create_id(NULL, &rdma_ctx.listen_id, NULL, RDMA_PS_TCP)) {
+        perror("rdma_create_id()");
+        return -1;
+    }
+
     struct rdma_addrinfo    hints,
                             *res = NULL;
-    int                     ret = 0;
-
     memset(&hints, 0, sizeof(hints));
     hints.ai_flags = RAI_PASSIVE;
     hints.ai_port_space = RDMA_PS_TCP;
@@ -151,11 +154,10 @@ init_rdma_listen() {
         perror("rdma_addrinfo");
         return -1;
     }
-
-    ret = rdma_create_ep(&rdma_ctx.listen_id, res, NULL, NULL);
+    int ret = rdma_bind_addr(rdma_ctx.listen_id, res->ai_src_addr);
     rdma_freeaddrinfo(res);
     if (0 != ret) {
-        perror("rdma_create_ep");
+        perror("rdma_bind_addr()");
         return -1;
     }
 
