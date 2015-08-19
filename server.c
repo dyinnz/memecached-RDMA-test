@@ -22,10 +22,9 @@ struct rdma_cm_id *last_id;
  *
  ******************************************************************************/
 
-#define MAX_BUFF_SIZE 1024
 #define REG_PER_CONN 10
 #define REG_NUM 10
-#define REG_SIZE 128
+#define REG_SIZE 2048
 
 struct rdma_context {
     struct ibv_context          **device_ctx_list;
@@ -277,10 +276,11 @@ handle_connect_request(struct rdma_cm_id *id) {
     */
 
     c->buff_list_size = REG_PER_CONN;
-    c->rsize = MAX_BUFF_SIZE;
+    c->rsize = REG_SIZE;
     c->rbuf_list = calloc(c->buff_list_size, sizeof(char*));
     c->rmr_list = calloc(c->buff_list_size, sizeof(struct ibv_mr*));
 
+    printf("%d %d\n", sizeof(char*), sizeof(struct ibv_mr*));
     for (i = 0; i < c->buff_list_size; ++i) {
         c->rbuf_list[i] = malloc(c->rsize);
         c->rmr_list[i] = rdma_reg_msgs(id, c->rbuf_list[i], c->rsize);
@@ -300,7 +300,7 @@ handle_connect_request(struct rdma_cm_id *id) {
  ******************************************************************************/
 void 
 handle_work_complete(struct ibv_wc *wc) {
-    struct ibv_mr *mr = (struct ibv_mr*)wc->wr_id;
+    struct ibv_mr *mr = ((struct ibv_mr*)(uintptr_t)wc->wr_id);
 
     if (IBV_WC_SUCCESS != wc->status) {
         printf("bad wc!\n");
@@ -309,11 +309,10 @@ handle_work_complete(struct ibv_wc *wc) {
 
     if (IBV_WC_RECV & wc->opcode) {
         static int count = 0;
-        //if (++count % 200 == 0) {
+        if (++count % 200 == 0) {
             printf("server has received: mr: %p, addr: %p\n%s\n", (void*)mr, (void*)mr->addr, (char*)mr->addr);
-        //}
-        memset(mr->addr, 0, mr->length);
-        if (0 != rdma_post_recv(last_id, mr, mr->addr, mr->length, mr)) {
+        }
+        if (0 != rdma_post_recv(last_id, wc->wr_id, mr->addr, mr->length, mr)) {
             perror("rdma_post_recv()");
             return;
         }
@@ -367,7 +366,7 @@ poll_event_handle(int fd, short lib_event, void *arg) {
     }
 
     for (i = 0; i < cqe; ++i) {
-        handle_work_complete(wc);
+        handle_work_complete(&wc[i]);
     }
 }
 
@@ -380,6 +379,7 @@ void
 rdma_cm_event_handle(int fd, short lib_event, void *arg) {
     struct rdma_cm_event    *cm_event = NULL;
     struct rdma_conn        *c = NULL;
+            int i = 0;
 
     if (0 != rdma_get_cm_event(rdma_ctx.cm_channel, &cm_event)) {
         perror("rdma_get_cm_event");
@@ -397,7 +397,7 @@ rdma_cm_event_handle(int fd, short lib_event, void *arg) {
             break;
 
         case RDMA_CM_EVENT_ESTABLISHED:
-           break;
+            break;
 
         case RDMA_CM_EVENT_DISCONNECTED:
             release_conn(c);
@@ -410,7 +410,7 @@ rdma_cm_event_handle(int fd, short lib_event, void *arg) {
         case RDMA_CM_EVENT_REJECTED:
             printf("CM event error: %d\n", cm_event->status);
             break;
-	
+
         default:
             printf("Ingoring this event\n");
             break;
