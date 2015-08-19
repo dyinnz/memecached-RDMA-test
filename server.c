@@ -22,9 +22,9 @@ struct rdma_cm_id *last_id;
  *
  ******************************************************************************/
 
-#define REG_PER_CONN 10
+#define REG_PER_CONN 1
 #define BUFF_SIZE 2048
-#define POLL_WC_SIZE 16
+#define POLL_WC_SIZE 1
 
 struct rdma_context {
     struct ibv_context          **device_ctx_list;
