@@ -14,6 +14,9 @@
 
 #include <event.h>
 
+// temp
+struct rdma_cm_id *last_id;
+
 /***************************************************************************//**
  * Settings
  *
@@ -58,7 +61,7 @@ struct rdma_conn {
 };
 
 
-#define REG_NUM 1000
+#define REG_NUM 10
 #define REG_SIZE 128
 
 static char recv_buffs[REG_NUM][REG_SIZE];
@@ -111,14 +114,16 @@ init_rdma_global_resources() {
             perror("ibv_reg_mr()");
             return -1;
         }
-        recv_sge[i].addr = (uintptr_t)recv_buffs[i];
-        recv_sge[i].length = REG_SIZE;
+        recv_sge[i].addr = (uint64_t)recv_mrs[i]->addr;
+        recv_sge[i].length = recv_mrs[i]->length;
         recv_sge[i].lkey = recv_mrs[i]->lkey;
 
         recv_wrs[i].num_sge = 1;
-        recv_wrs[i].sg_list = &recv_sge[i];
-        recv_wrs[i].wr_id = (uintptr_t)recv_mrs[i];
+        recv_wrs[i].sg_list = &(recv_sge[i]);
+        recv_wrs[i].wr_id = (uint64_t)recv_mrs[i];
         recv_wrs[i].next = NULL;
+
+        printf("mr: %p,  addr: %p\n", (void*)recv_mrs[i], recv_mrs[i]->addr);
     }
 
     return 0;
@@ -136,26 +141,19 @@ int
 init_rdma_listen() {
     struct rdma_addrinfo    hints,
                             *res = NULL;
-	struct ibv_qp_init_attr attr;
     int                     ret = 0;
 
     memset(&hints, 0, sizeof(hints));
     hints.ai_flags = RAI_PASSIVE;
-	hints.ai_port_space = RDMA_PS_TCP;
+    hints.ai_port_space = RDMA_PS_TCP;
     if (0 != rdma_getaddrinfo(NULL, port, &hints, &res)) {
         perror("rdma_addrinfo");
         return -1;
     }
 
-	memset(&attr, 0, sizeof attr);
-	attr.cap.max_send_wr = attr.cap.max_recv_wr = 1;
-	attr.cap.max_send_sge = attr.cap.max_recv_sge = 1;
-	attr.cap.max_inline_data = 16;
-	attr.sq_sig_all = 1;
-	
-    ret = rdma_create_ep(&rdma_ctx.listen_id, res, NULL, &attr);
-	rdma_freeaddrinfo(res);
-	if (0 != ret) {
+    ret = rdma_create_ep(&rdma_ctx.listen_id, res, NULL, NULL);
+    rdma_freeaddrinfo(res);
+    if (0 != ret) {
         perror("rdma_create_ep");
         return -1;
     }
@@ -229,14 +227,14 @@ handle_connect_request(struct rdma_cm_id *id) {
 
     struct ibv_qp_init_attr init_qp_attr;
     memset(&init_qp_attr, 0, sizeof(init_qp_attr)); 
-	init_qp_attr.cap.max_send_wr = 8;
-	init_qp_attr.cap.max_recv_wr = wr_size;
-	init_qp_attr.cap.max_send_sge = max_sge;
-	init_qp_attr.cap.max_recv_sge = max_sge;
-	init_qp_attr.sq_sig_all = 1;
-	init_qp_attr.qp_type = IBV_QPT_RC;
-	init_qp_attr.send_cq = rdma_ctx.cq;
-	init_qp_attr.recv_cq = rdma_ctx.cq;
+    init_qp_attr.cap.max_send_wr = 8;
+    init_qp_attr.cap.max_recv_wr = wr_size;
+    init_qp_attr.cap.max_send_sge = max_sge;
+    init_qp_attr.cap.max_recv_sge = max_sge;
+    init_qp_attr.sq_sig_all = 1;
+    init_qp_attr.qp_type = IBV_QPT_RC;
+    init_qp_attr.send_cq = rdma_ctx.cq;
+    init_qp_attr.recv_cq = rdma_ctx.cq;
 
     if (0 != rdma_create_qp(id, rdma_ctx.pd, &init_qp_attr)) {
         perror("rdma_create_qp");
@@ -255,12 +253,14 @@ handle_connect_request(struct rdma_cm_id *id) {
 
     int i = 0;
     struct ibv_recv_wr *bad;
-    for (i = 0; i < 1000; ++i) {
+    for (i = 0; i < REG_NUM; ++i) {
         if (0 != ibv_post_recv(id->qp, &recv_wrs[i], &bad)) {
             perror("rdma_post_recv");
             return -1;
         }
     }
+
+    last_id = id;
 
     return 0;
 }
@@ -272,7 +272,7 @@ handle_connect_request(struct rdma_cm_id *id) {
  ******************************************************************************/
 void 
 handle_work_complete(struct ibv_wc *wc) {
-    struct ibv_mr *mr = (struct ibv_mr*)(uintptr_t)wc->wr_id;
+    struct ibv_mr *mr = (struct ibv_mr*)wc->wr_id;
 
     if (IBV_WC_SUCCESS != wc->status) {
         printf("bad wc!\n");
@@ -280,7 +280,15 @@ handle_work_complete(struct ibv_wc *wc) {
     }
 
     if (IBV_WC_RECV & wc->opcode) {
-        printf("server has received: %s\n", (char*)mr->addr);
+        static int count = 0;
+        //if (++count % 200 == 0) {
+            printf("server has received: mr: %p, addr: %p\n%s\n", (void*)mr, (void*)mr->addr, (char*)mr->addr);
+        //}
+        memset(mr->addr, 0, mr->length);
+        if (0 != rdma_post_recv(last_id, mr, mr->addr, mr->length, mr)) {
+            perror("rdma_post_recv()");
+            return;
+        }
         return;
     }
 
