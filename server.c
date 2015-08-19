@@ -310,7 +310,7 @@ handle_work_complete(struct ibv_wc *wc) {
     if (IBV_WC_RECV & wc->opcode) {
         static int count = 0;
         if (++count % 200 == 0) {
-            printf("server has received: mr: %p, addr: %p\n%s\n", (void*)mr, (void*)mr->addr, (char*)mr->addr);
+            printf("server has received %d : %s\n", count, (char*)mr->addr);
         }
         if (0 != rdma_post_recv(last_id, wc->wr_id, mr->addr, mr->length, mr)) {
             perror("rdma_post_recv()");
@@ -360,14 +360,16 @@ poll_event_handle(int fd, short lib_event, void *arg) {
         return;
     }
 
-    if ( -1 == (cqe = ibv_poll_cq(cq, 10, wc)) ) {
-        perror("ibv_poll_cq");
-        return;
-    }
+    do {
+        if ( -1 == (cqe = ibv_poll_cq(cq, 10, wc)) ) {
+            perror("ibv_poll_cq");
+            return;
+        }
 
-    for (i = 0; i < cqe; ++i) {
-        handle_work_complete(&wc[i]);
-    }
+        for (i = 0; i < cqe; ++i) {
+            handle_work_complete(&wc[i]);
+        }
+    } while (cqe == 10);
 }
 
 
