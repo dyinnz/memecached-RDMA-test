@@ -11,7 +11,7 @@
 #include <rdma/rdma_cma.h>
 #include <rdma/rdma_verbs.h>
 
-#define RDMA_RECV_BUFF 1024
+#define MAX_BUFF_SIZE 1024
 #define RDMA_MAX_HEAD 16
 
 
@@ -42,7 +42,6 @@ static char incr_noreply[] = "incr foo 1 noreply\r\n";
 static char decr_noreply[] = "decr foo 1 noreply\r\n";
 static char delete_noreply[] = "delete foo noreply\r\n";
 
-/*
 static char add_reply[] = "add foo 0 0 1\r\n1\r\n";
 static char set_reply[] = "set foo 0 0 1\r\n1\r\n";
 static char replace_reply[] = "replace foo 0 0 1\r\n1\r\n";
@@ -51,7 +50,6 @@ static char prepend_reply[] = "prepend foo 0 0 1\r\n1\r\n";
 static char incr_reply[] = "incr foo 1\r\n";
 static char decr_reply[] = "decr foo 1\r\n";
 static char delete_reply[] = "delete foo\r\n";
-*/
 
 /***************************************************************************//**
  * Relative resources around connection
@@ -62,7 +60,8 @@ struct rdma_context {
     struct ibv_context          *device_ctx;
     struct ibv_comp_channel     *comp_channel;
     struct ibv_pd               *pd;
-    struct ibv_cq               *cq;
+    struct ibv_cq               *send_cq;
+    struct ibv_cq               *recv_cq;
 
     struct rdma_event_channel   *cm_channel;
     
@@ -74,7 +73,11 @@ struct rdma_conn {
     struct rdma_cm_id   *id;
 
     struct ibv_pd       *pd;
-    struct ibv_cq       *cq;
+    struct ibv_cq       *send_cq;
+    struct ibv_cq       *recv_cq;
+
+    char                *rbuf;
+    struct ibv_mr       *rmr;
 };
 
 /***************************************************************************//**
@@ -106,18 +109,19 @@ init_rdma_global_resources() {
         return -1;
     }
 
-    if ( !(rdma_ctx.cq = ibv_create_cq(rdma_ctx.device_ctx, 
+    if ( !(rdma_ctx.send_cq = ibv_create_cq(rdma_ctx.device_ctx, 
                     cq_size, NULL, NULL, 0)) ) {
         perror("ibv_create_cq");
         return -1;
     }
 
-    if (0 != ibv_req_notify_cq(rdma_ctx.cq, 0)) {
-        perror("ibv_reg_notify_cq");
+    if ( !(rdma_ctx.recv_cq = ibv_create_cq(rdma_ctx.device_ctx, 
+                    cq_size, NULL, NULL, 0)) ) {
+        perror("ibv_create_cq");
         return -1;
     }
 
-    return 0;
+     return 0;
 }
 
 /***************************************************************************//**
@@ -157,20 +161,25 @@ build_connection() {
     qp_attr.cap.max_recv_sge = max_sge;
     qp_attr.sq_sig_all = 1;
     qp_attr.qp_type = IBV_QPT_RC;
-    qp_attr.send_cq = rdma_ctx.cq;
-    qp_attr.recv_cq = rdma_ctx.cq;
+    qp_attr.send_cq = rdma_ctx.send_cq;
+    qp_attr.recv_cq = rdma_ctx.recv_cq;
 
     if (0 != rdma_create_qp(c->id, rdma_ctx.pd, &qp_attr)) {
-        perror("rdma_create_qp");
+        perror("rdma_create_qp()");
         return NULL;;
     }
 
-
-
     if (0 != rdma_connect(c->id, NULL)) {
-        perror("rdma_connect");
+        perror("rdma_connect()");
         return NULL;
     }
+
+    c->rbuf = malloc(MAX_BUFF_SIZE);
+    if ( !(c->rmr = rdma_reg_msgs(c->id, c->rbuf, MAX_BUFF_SIZE)) ) {
+        perror("rdma_reg_msgs()");
+        return NULL;
+    }
+
     return c;
 }
 
@@ -187,7 +196,7 @@ send_mr(struct rdma_cm_id *id, struct ibv_mr *mr) {
     struct ibv_wc wc;
     int cqe = 0;
     do {
-        cqe = ibv_poll_cq(rdma_ctx.cq, 1, &wc);
+        cqe = ibv_poll_cq(rdma_ctx.send_cq, 1, &wc);
     } while (cqe == 0);
 
     if (cqe < 0) {
@@ -197,7 +206,31 @@ send_mr(struct rdma_cm_id *id, struct ibv_mr *mr) {
     }
 }
 
+/***************************************************************************//**
+ * Receive message bt RDMA recv operation
+ *
+ ******************************************************************************/
+static int
+recv_msg(struct rdma_conn *c) {
+    if (0 != rdma_post_recv(c->id, c, c->rmr->addr, c->rmr->length, c->rmr)) {
+        perror("rdma_post_recv()");
+        return -1;
+    }
 
+    struct ibv_wc wc;
+    int cqe = 0;
+    do {
+        cqe = ibv_poll_cq(rdma_ctx.recv_cq, 1, &wc);
+    } while (cqe == 0);
+
+    if (cqe < 0) {
+        return -1;
+    } else {
+        return 0;
+    }
+
+    return 0;
+}
 
 /***************************************************************************//**
  * Test command with registered memory
@@ -235,6 +268,41 @@ test_with_regmem(void *arg) {
         send_mr(c->id, incr_noreply_mr);
         send_mr(c->id, decr_noreply_mr);
         send_mr(c->id, delete_noreply_mr);
+    }
+
+    clock_gettime(CLOCK_REALTIME, &finish);
+    printf("Cost time: %lf secs\n", (double)(finish.tv_sec-start.tv_sec + 
+                (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
+
+    printf("\nreply:\n");
+    clock_gettime(CLOCK_REALTIME, &start);
+
+    struct ibv_mr   *add_reply_mr = rdma_reg_msgs(c->id, add_reply, sizeof(add_reply));
+    struct ibv_mr   *set_reply_mr = rdma_reg_msgs(c->id, set_reply, sizeof(set_reply));
+    struct ibv_mr   *replace_reply_mr = rdma_reg_msgs(c->id, replace_reply, sizeof(replace_reply));
+    struct ibv_mr   *append_reply_mr = rdma_reg_msgs(c->id, append_reply, sizeof(append_reply));
+    struct ibv_mr   *prepend_reply_mr = rdma_reg_msgs(c->id, prepend_reply, sizeof(prepend_reply));
+    struct ibv_mr   *incr_reply_mr = rdma_reg_msgs(c->id, incr_reply, sizeof(incr_reply));
+    struct ibv_mr   *decr_reply_mr = rdma_reg_msgs(c->id, decr_reply, sizeof(decr_reply));
+    struct ibv_mr   *delete_reply_mr = rdma_reg_msgs(c->id, delete_reply, sizeof(delete_reply));
+
+    for (i = 0; i < request_number; ++i) {
+        send_mr(c->id, add_reply_mr);
+        recv_msg(c);
+        send_mr(c->id, set_reply_mr);
+        recv_msg(c);
+        send_mr(c->id, replace_reply_mr);
+        recv_msg(c);
+        send_mr(c->id, append_reply_mr);
+        recv_msg(c);
+        send_mr(c->id, prepend_reply_mr);
+        recv_msg(c);
+        send_mr(c->id, incr_reply_mr);
+        recv_msg(c);
+        send_mr(c->id, decr_reply_mr);
+        recv_msg(c);
+        send_mr(c->id, delete_reply_mr);
+        recv_msg(c);
     }
 
     clock_gettime(CLOCK_REALTIME, &finish);
