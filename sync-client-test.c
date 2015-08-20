@@ -131,6 +131,23 @@ build_connection() {
         perror("rdma_create_id()");
         return NULL;
     }
+    struct rdma_addrinfo    hints = { .ai_port_space = RDMA_PS_TCP },
+                            *res = NULL;
+    if (0 != rdma_getaddrinfo(pstr_server, pstr_port, &hints, &res)) {
+        perror("rdma_getaddrinfo()");
+        return NULL;
+    }
+
+    int ret = 0;
+    ret = rdma_resolve_addr(c->id, NULL, res->ai_dst_addr, 100);  // wait for 100 ms
+    ret = rdma_resolve_route(c->id, 100); 
+
+    rdma_freeaddrinfo(res);
+    if (0 != ret) {
+        perror("Error on resolving addr or route");
+        return NULL;
+    }
+
 
     struct ibv_qp_init_attr qp_attr;
     memset(&qp_attr, 0, sizeof(struct ibv_qp_init_attr));
@@ -148,22 +165,7 @@ build_connection() {
         return NULL;;
     }
 
-    struct rdma_addrinfo    hints = { .ai_port_space = RDMA_PS_TCP },
-                            *res = NULL;
-    if (0 != rdma_getaddrinfo(pstr_server, pstr_port, &hints, &res)) {
-        perror("rdma_getaddrinfo()");
-        return NULL;
-    }
 
-    int ret = 0;
-    ret = rdma_resolve_addr(c->id, NULL, res->ai_dst_addr, 100);  // wait for 100 ms
-    ret = rdma_resolve_route(c->id, 100); 
-
-    rdma_freeaddrinfo(res);
-    if (0 != ret) {
-        perror("Error on resolving addr or route");
-        return NULL;
-    }
 
     if (0 != rdma_connect(c->id, NULL)) {
         perror("rdma_connect");
@@ -185,7 +187,7 @@ send_mr(struct rdma_cm_id *id, struct ibv_mr *mr) {
     struct ibv_wc wc;
     int cqe = 0;
     do {
-        cqe = ibv_poll_cq(id->send_cq, 1, &wc);
+        cqe = ibv_poll_cq(rdma_ctx.cq, 1, &wc);
     } while (cqe == 0);
 
     if (cqe < 0) {
@@ -281,11 +283,13 @@ main(int argc, char *argv[]) {
         }
     }
 
+    init_rdma_global_resources();
+
     struct timespec start,
                     finish;
     clock_gettime(CLOCK_REALTIME, &start);
 
-
+    test_with_regmem(NULL);
 
     clock_gettime(CLOCK_REALTIME, &finish);
 

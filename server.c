@@ -22,7 +22,7 @@ struct rdma_cm_id *last_id;
  *
  ******************************************************************************/
 
-#define REG_PER_CONN 1
+#define REG_PER_CONN 10
 #define BUFF_SIZE 2048
 #define POLL_WC_SIZE 1
 
@@ -290,7 +290,7 @@ handle_work_complete(struct ibv_wc *wc) {
 
     if (IBV_WC_RECV & wc->opcode) {
         c->total_recv += 1;
-        if (c->total_recv % 200 == 0) {
+        if (c->total_recv % 1000 == 0) {
             printf("server has received %d : %s\n", c->total_recv, (char*)mr->addr);
         }
         if (0 != rdma_post_recv(c->id, (void *)(uintptr_t)wc->wr_id, mr->addr, mr->length, mr)) {
