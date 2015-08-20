@@ -268,6 +268,14 @@ handle_connect_request(struct rdma_cm_id *id) {
         }
     }
 
+    c->ssize = BUFF_SIZE;
+    c->sbuf = malloc(c->ssize);
+    if ( !(c->smr = rdma_reg_msgs(id, c->sbuf, c->ssize)) ) {
+        perror("rdma_reg_msgs()");
+        return -1;
+    }
+    sprintf(c->sbuf, "hello client!\n");
+
     return 0;
 }
 
@@ -295,6 +303,10 @@ handle_work_complete(struct ibv_wc *wc) {
         }
         if (0 != rdma_post_recv(c->id, (void *)(uintptr_t)wc->wr_id, mr->addr, mr->length, mr)) {
             perror("rdma_post_recv()");
+            return;
+        }
+        if (0 != rdma_post_send(c->id, c->smr, c->smr->addr, c->smr->length, c->smr, 0)) {
+            perror("rdma_post_send()");
             return;
         }
         return;
