@@ -22,8 +22,8 @@ struct rdma_cm_id *last_id;
  *
  ******************************************************************************/
 
-#define REG_PER_CONN 5
-#define POLL_WC_SIZE 128
+#define REG_PER_CONN 128
+#define POLL_WC_SIZE 256
 #define BUFF_SIZE 1024
 
 struct rdma_context {
@@ -312,14 +312,14 @@ handle_work_complete(struct ibv_wc *wc) {
                 perror("rdma_post_send()");
                 return;
             }
-            printf("post send ok\n");
+            //printf("post send ok\n");
         }
         return;
     }
 
     switch (wc->opcode) {
         case IBV_WC_SEND:
-            printf("server has sent: %s\n", (char*)mr->addr);
+            //printf("server has sent: %s\n", (char*)mr->addr);
             break;
         case IBV_WC_RDMA_WRITE:
             break;

@@ -13,8 +13,8 @@
 
 #define BUFF_SIZE 1024
 #define RDMA_MAX_HEAD 16
-#define POLL_WC_SIZE 8
-#define REG_PER_CONN 8
+#define POLL_WC_SIZE 128
+#define REG_PER_CONN 128
 
 /***************************************************************************//**
  * Testing parameters
