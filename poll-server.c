@@ -73,7 +73,6 @@ static int      request_num = 1000;
 static int      verbose = 0;
 
 void rdma_cm_event_handle(int fd, short lib_event, void *arg);
-void poll_event_handle(int fd, short lib_event, void *arg);
 
 /***************************************************************************//**
  * Description 
@@ -250,6 +249,14 @@ handle_connect_request(struct rdma_cm_id *id) {
     /* temp */
     last_id = id;
 
+    c->ssize = BUFF_SIZE;
+    c->sbuf = malloc(c->ssize);
+    sprintf(c->sbuf, "hello client!\n");
+    if ( !(c->smr = rdma_reg_msgs(id, c->sbuf, c->ssize)) ) {
+        perror("rdma_reg_msgs()");
+        return -1;
+    }
+
     c->buff_list_size = REG_PER_CONN;
     c->rsize = BUFF_SIZE;
     c->rbuf_list = calloc(c->buff_list_size, sizeof(char*));
@@ -267,14 +274,6 @@ handle_connect_request(struct rdma_cm_id *id) {
             return -1;
         }
     }
-
-    c->ssize = BUFF_SIZE;
-    c->sbuf = malloc(c->ssize);
-    if ( !(c->smr = rdma_reg_msgs(id, c->sbuf, c->ssize)) ) {
-        perror("rdma_reg_msgs()");
-        return -1;
-    }
-    sprintf(c->sbuf, "hello client!\n");
 
     return 0;
 }

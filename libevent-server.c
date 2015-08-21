@@ -102,15 +102,8 @@ init_rdma_global_resources() {
         return -1;
     }
 
-    /*
     if ( !(rdma_ctx.cq = ibv_create_cq(rdma_ctx.device_ctx, 
                     cq_size, NULL, rdma_ctx.comp_channel, 0)) ) {
-        perror("ibv_create_cq");
-        return -1;
-    }
-    */
-    if ( !(rdma_ctx.cq = ibv_create_cq(rdma_ctx.device_ctx, 
-                    cq_size, NULL, NULL, 0)) ) {
         perror("ibv_create_cq");
         return -1;
     }
@@ -252,6 +245,14 @@ handle_connect_request(struct rdma_cm_id *id) {
     /* temp */
     last_id = id;
 
+    c->ssize = BUFF_SIZE;
+    c->sbuf = malloc(c->ssize);
+    sprintf(c->sbuf, "hello client!\n");
+    if ( !(c->smr = rdma_reg_msgs(id, c->sbuf, c->ssize)) ) {
+        perror("rdma_reg_msgs()");
+        return -1;
+    }
+
     c->buff_list_size = REG_PER_CONN;
     c->rsize = BUFF_SIZE;
     c->rbuf_list = calloc(c->buff_list_size, sizeof(char*));
@@ -270,13 +271,10 @@ handle_connect_request(struct rdma_cm_id *id) {
         }
     }
 
-    c->ssize = BUFF_SIZE;
-    c->sbuf = malloc(c->ssize);
-    sprintf(c->sbuf, "hello client!\n");
-    if ( !(c->smr = rdma_reg_msgs(id, c->sbuf, c->ssize)) ) {
-        perror("rdma_reg_msgs()");
-        return -1;
-    }
+    event_set(&c->poll_event, rdma_ctx.comp_channel->fd, EV_READ | EV_PERSIST, 
+            poll_event_handle, NULL);
+    event_base_set(rdma_ctx.base, &c->poll_event);
+    event_add(&c->poll_event, NULL);
 
     return 0;
 }
@@ -417,33 +415,6 @@ rdma_cm_event_handle(int fd, short lib_event, void *arg) {
 }
 
 /***************************************************************************//**
- * poll and work thread
- *
- ******************************************************************************/
-void *
-poll_and_work_thread(void *arg) {
-    struct ibv_wc   wc[POLL_WC_SIZE];
-    int i = 0, cqe = 0;
-
-    while (1) {
-        if ((cqe = ibv_poll_cq(rdma_ctx.cq, 10, wc)) < 0) {
-            perror("ibv_poll_cq()");
-            break;
-        }
-
-        if (verbose > 0) {
-            printf("Get cqe: %d\n", cqe);
-        }
-
-        for (i = 0; i < cqe; ++i) {
-            handle_work_complete(&wc[i]);
-        }
-    }
-
-    return NULL;
-}
-
-/***************************************************************************//**
  * Main
  *
  ******************************************************************************/
@@ -454,13 +425,6 @@ main(int argc, char *argv[]) {
 
     if (0 != init_rdma_global_resources()) return -1;
     if (0 != init_rdma_listen()) return -1;
-
-    pthread_t poll_thread;
-    memset(&poll_thread, 0, sizeof(pthread_t));
-    if (0 != pthread_create(&poll_thread, NULL, poll_and_work_thread, NULL)) {
-        return -1;
-    }
-
     if (0 != init_and_dispatch_event()) return -1;
 
     return 0;
