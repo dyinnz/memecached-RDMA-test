@@ -22,9 +22,9 @@ struct rdma_cm_id *last_id;
  *
  ******************************************************************************/
 
-#define REG_PER_CONN 120
-#define POLL_WC_SIZE 120
-#define BUFF_SIZE 2048
+#define REG_PER_CONN 5
+#define POLL_WC_SIZE 128
+#define BUFF_SIZE 1024
 
 struct rdma_context {
     struct ibv_context          **device_ctx_list;
@@ -245,7 +245,7 @@ handle_connect_request(struct rdma_cm_id *id) {
     /* temp */
     last_id = id;
 
-    c->ssize = BUFF_SIZE;
+    c->ssize = 128;
     c->sbuf = malloc(c->ssize);
     sprintf(c->sbuf, "hello client!\n");
     if ( !(c->smr = rdma_reg_msgs(id, c->sbuf, c->ssize)) ) {
@@ -306,10 +306,13 @@ handle_work_complete(struct ibv_wc *wc) {
             return;
         }
         if (NULL == strstr(mr->addr, "noreply")) {
+            c->swr.c = c;
+            c->swr.mr = c->smr;
             if (0 != rdma_post_send(c->id, &c->swr, c->smr->addr, c->smr->length, c->smr, 0)) {
                 perror("rdma_post_send()");
                 return;
             }
+            printf("post send ok\n");
         }
         return;
     }
