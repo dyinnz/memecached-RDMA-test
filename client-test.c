@@ -246,8 +246,14 @@ recv_msg(struct rdma_conn *c) {
 
     if (cqe < 0) {
         return -1;
-    } else {
-        return 0;
+    }
+    
+    struct wr_context *wr_ctx = (struct wr_context*)(uintptr_t)wc.wr_id;
+    struct ibv_mr *mr = wr_ctx->mr;
+    
+    if (0 != rdma_post_recv(c->id, wr_ctx, mr->addr, mr->length, mr)) {
+        perror("rdma_post_recv()");
+        return -1;
     }
 
     return 0;
