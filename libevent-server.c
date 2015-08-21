@@ -41,7 +41,10 @@ struct rdma_context {
     struct event                listen_event;
 } rdma_ctx;
 
-struct wr_context;
+struct wr_context {
+    struct rdma_conn       *c;
+    struct ibv_mr           *mr;
+};
 
 struct rdma_conn {
     struct rdma_cm_id       *id;
@@ -49,6 +52,7 @@ struct rdma_conn {
     struct ibv_mr           *smr;
     char                    *sbuf;
     size_t                  ssize;
+    struct wr_context       swr;
 
     struct ibv_mr           **rmr_list;
     char                    **rbuf_list;
@@ -61,10 +65,6 @@ struct rdma_conn {
     int                     total_recv;
 };
 
-struct wr_context {
-    struct rdma_conn       *c;
-    struct ibv_mr           *mr;
-};
 
 static int      backlog = 1024;
 static int      cq_size = 1024;
@@ -270,6 +270,14 @@ handle_connect_request(struct rdma_cm_id *id) {
         }
     }
 
+    c->ssize = BUFF_SIZE;
+    c->sbuf = malloc(c->ssize);
+    sprintf(c->sbuf, "hello client!\n");
+    if ( !(c->smr = rdma_reg_msgs(id, c->sbuf, c->ssize)) ) {
+        perror("rdma_reg_msgs()");
+        return -1;
+    }
+
     return 0;
 }
 
@@ -298,6 +306,12 @@ handle_work_complete(struct ibv_wc *wc) {
         if (0 != rdma_post_recv(c->id, (void *)(uintptr_t)wc->wr_id, mr->addr, mr->length, mr)) {
             perror("rdma_post_recv()");
             return;
+        }
+        if (NULL == strstr(mr->addr, "noreply")) {
+            if (0 != rdma_post_send(c->id, &c->swr, c->smr->addr, c->smr->length, c->smr, 0)) {
+                perror("rdma_post_send()");
+                return;
+            }
         }
         return;
     }

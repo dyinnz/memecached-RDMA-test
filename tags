@@ -1,0 +1,155 @@
+!_TAG_FILE_FORMAT	2	/extended format; --format=1 will not append ;" to lines/
+!_TAG_FILE_SORTED	1	/0=unsorted, 1=sorted, 2=foldcase/
+!_TAG_PROGRAM_AUTHOR	Darren Hiebert	/dhiebert@users.sourceforge.net/
+!_TAG_PROGRAM_NAME	Exuberant Ctags	//
+!_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
+!_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+BUFF_SIZE	libevent-server.c	27;"	d	file:
+BUFF_SIZE	poll-server.c	26;"	d	file:
+CFLAGS	makefile	/^CFLAGS 	:= -Wall -g$/;"	m
+LDFLAGS	makefile	/^LDFLAGS := ${LDFLAGS} -lrdmacm -libverbs -lpthread -levent$/;"	m
+MAX_BUFF_SIZE	client-test.c	14;"	d	file:
+POLL_WC_SIZE	libevent-server.c	26;"	d	file:
+POLL_WC_SIZE	poll-server.c	27;"	d	file:
+RDMA_MAX_HEAD	client-test.c	15;"	d	file:
+REG_PER_CONN	libevent-server.c	25;"	d	file:
+REG_PER_CONN	poll-server.c	25;"	d	file:
+add_noreply	client-test.c	/^static char add_noreply[] = "add foo 0 0 1 noreply\\r\\n1\\r\\n";$/;"	v	file:
+add_reply	client-test.c	/^static char add_reply[] = "add foo 0 0 1\\r\\n1\\r\\n";$/;"	v	file:
+append_noreply	client-test.c	/^static char append_noreply[] = "append foo 0 0 1 noreply\\r\\n1\\r\\n";$/;"	v	file:
+append_reply	client-test.c	/^static char append_reply[] = "append foo 0 0 1\\r\\n1\\r\\n";$/;"	v	file:
+backlog	libevent-server.c	/^static int      backlog = 1024;$/;"	v	file:
+backlog	poll-server.c	/^static int      backlog = 1024;$/;"	v	file:
+base	libevent-server.c	/^    struct event_base           *base;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::event_base	file:
+base	poll-server.c	/^    struct event_base           *base;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::event_base	file:
+buff_list_size	client-test.c	/^    size_t                  buff_list_size;$/;"	m	struct:rdma_conn	file:
+buff_list_size	libevent-server.c	/^    size_t                  buff_list_size;$/;"	m	struct:rdma_conn	file:
+buff_list_size	poll-server.c	/^    size_t                  buff_list_size;$/;"	m	struct:rdma_conn	file:
+build_connection	client-test.c	/^build_connection() {$/;"	f	file:
+c	libevent-server.c	/^    struct rdma_conn       *c;$/;"	m	struct:wr_context	typeref:struct:wr_context::rdma_conn	file:
+c	poll-server.c	/^    struct rdma_conn       *c;$/;"	m	struct:wr_context	typeref:struct:wr_context::rdma_conn	file:
+cm_channel	client-test.c	/^    struct rdma_event_channel   *cm_channel;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::rdma_event_channel	file:
+cm_channel	libevent-server.c	/^    struct rdma_event_channel   *cm_channel;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::rdma_event_channel	file:
+cm_channel	poll-server.c	/^    struct rdma_event_channel   *cm_channel;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::rdma_event_channel	file:
+comp_channel	client-test.c	/^    struct ibv_comp_channel     *comp_channel;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::ibv_comp_channel	file:
+comp_channel	libevent-server.c	/^    struct ibv_comp_channel     *comp_channel;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::ibv_comp_channel	file:
+comp_channel	poll-server.c	/^    struct ibv_comp_channel     *comp_channel;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::ibv_comp_channel	file:
+cq	libevent-server.c	/^    struct ibv_cq               *cq;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::ibv_cq	file:
+cq	poll-server.c	/^    struct ibv_cq               *cq;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::ibv_cq	file:
+cq_size	client-test.c	/^static int      cq_size = 1024;$/;"	v	file:
+cq_size	libevent-server.c	/^static int      cq_size = 1024;$/;"	v	file:
+cq_size	poll-server.c	/^static int      cq_size = 1024;$/;"	v	file:
+decr_noreply	client-test.c	/^static char decr_noreply[] = "decr foo 1 noreply\\r\\n";$/;"	v	file:
+decr_reply	client-test.c	/^static char decr_reply[] = "decr foo 1\\r\\n";$/;"	v	file:
+delete_noreply	client-test.c	/^static char delete_noreply[] = "delete foo noreply\\r\\n";$/;"	v	file:
+delete_reply	client-test.c	/^static char delete_reply[] = "delete foo\\r\\n";$/;"	v	file:
+device_ctx	client-test.c	/^    struct ibv_context          *device_ctx;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::ibv_context	file:
+device_ctx	libevent-server.c	/^    struct ibv_context          *device_ctx;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::ibv_context	file:
+device_ctx	poll-server.c	/^    struct ibv_context          *device_ctx;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::ibv_context	file:
+device_ctx_list	client-test.c	/^    struct ibv_context          **device_ctx_list;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::ibv_context	file:
+device_ctx_list	libevent-server.c	/^    struct ibv_context          **device_ctx_list;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::ibv_context	file:
+device_ctx_list	poll-server.c	/^    struct ibv_context          **device_ctx_list;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::ibv_context	file:
+handle_connect_request	libevent-server.c	/^handle_connect_request(struct rdma_cm_id *id) {$/;"	f
+handle_connect_request	poll-server.c	/^handle_connect_request(struct rdma_cm_id *id) {$/;"	f
+handle_work_complete	libevent-server.c	/^handle_work_complete(struct ibv_wc *wc) {$/;"	f
+handle_work_complete	poll-server.c	/^handle_work_complete(struct ibv_wc *wc) {$/;"	f
+id	client-test.c	/^    struct rdma_cm_id   *id;$/;"	m	struct:rdma_conn	typeref:struct:rdma_conn::rdma_cm_id	file:
+id	libevent-server.c	/^    struct rdma_cm_id       *id;$/;"	m	struct:rdma_conn	typeref:struct:rdma_conn::rdma_cm_id	file:
+id	poll-server.c	/^    struct rdma_cm_id       *id;$/;"	m	struct:rdma_conn	typeref:struct:rdma_conn::rdma_cm_id	file:
+incr_noreply	client-test.c	/^static char incr_noreply[] = "incr foo 1 noreply\\r\\n";$/;"	v	file:
+incr_reply	client-test.c	/^static char incr_reply[] = "incr foo 1\\r\\n";$/;"	v	file:
+init_and_dispatch_event	libevent-server.c	/^init_and_dispatch_event() {$/;"	f
+init_and_dispatch_event	poll-server.c	/^init_and_dispatch_event() {$/;"	f
+init_rdma_global_resources	client-test.c	/^init_rdma_global_resources() {$/;"	f
+init_rdma_global_resources	libevent-server.c	/^init_rdma_global_resources() {$/;"	f
+init_rdma_global_resources	poll-server.c	/^init_rdma_global_resources() {$/;"	f
+init_rdma_listen	libevent-server.c	/^init_rdma_listen() {$/;"	f
+init_rdma_listen	poll-server.c	/^init_rdma_listen() {$/;"	f
+last_id	libevent-server.c	/^struct rdma_cm_id *last_id;$/;"	v	typeref:struct:rdma_cm_id
+last_id	poll-server.c	/^struct rdma_cm_id *last_id;$/;"	v	typeref:struct:rdma_cm_id
+last_time	client-test.c	/^static int      last_time = 1000;    \/* secs *\/$/;"	v	file:
+listen_event	libevent-server.c	/^    struct event                listen_event;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::event	file:
+listen_event	poll-server.c	/^    struct event                listen_event;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::event	file:
+listen_id	client-test.c	/^    struct rdma_cm_id           *listen_id;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::rdma_cm_id	file:
+listen_id	libevent-server.c	/^    struct rdma_cm_id           *listen_id;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::rdma_cm_id	file:
+listen_id	poll-server.c	/^    struct rdma_cm_id           *listen_id;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::rdma_cm_id	file:
+main	client-test.c	/^main(int argc, char *argv[]) {$/;"	f
+main	libevent-server.c	/^main(int argc, char *argv[]) {$/;"	f
+main	poll-server.c	/^main(int argc, char *argv[]) {$/;"	f
+max_sge	client-test.c	/^static int      max_sge = 8;$/;"	v	file:
+max_sge	libevent-server.c	/^static int      max_sge = 8;$/;"	v	file:
+max_sge	poll-server.c	/^static int      max_sge = 8;$/;"	v	file:
+mr	libevent-server.c	/^    struct ibv_mr           *mr;$/;"	m	struct:wr_context	typeref:struct:wr_context::ibv_mr	file:
+mr	poll-server.c	/^    struct ibv_mr           *mr;$/;"	m	struct:wr_context	typeref:struct:wr_context::ibv_mr	file:
+pd	client-test.c	/^    struct ibv_pd               *pd;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::ibv_pd	file:
+pd	client-test.c	/^    struct ibv_pd       *pd;$/;"	m	struct:rdma_conn	typeref:struct:rdma_conn::ibv_pd	file:
+pd	libevent-server.c	/^    struct ibv_pd               *pd;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::ibv_pd	file:
+pd	poll-server.c	/^    struct ibv_pd               *pd;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::ibv_pd	file:
+poll_and_work_thread	libevent-server.c	/^poll_and_work_thread(void *arg) {$/;"	f
+poll_and_work_thread	poll-server.c	/^poll_and_work_thread(void *arg) {$/;"	f
+poll_event	libevent-server.c	/^    struct event            poll_event;$/;"	m	struct:rdma_conn	typeref:struct:rdma_conn::event	file:
+poll_event_handle	libevent-server.c	/^poll_event_handle(int fd, short lib_event, void *arg) {$/;"	f
+port	libevent-server.c	/^static char     *port = "6666";$/;"	v	file:
+port	poll-server.c	/^static char     *port = "6666";$/;"	v	file:
+prepend_noreply	client-test.c	/^static char prepend_noreply[] = "prepend foo 0 0 1 noreply\\r\\n1\\r\\n";$/;"	v	file:
+prepend_reply	client-test.c	/^static char prepend_reply[] = "prepend foo 0 0 1\\r\\n1\\r\\n";$/;"	v	file:
+pstr_port	client-test.c	/^static char     *pstr_port = "11211";$/;"	v	file:
+pstr_server	client-test.c	/^static char     *pstr_server = "127.0.0.1";$/;"	v	file:
+rbuf	client-test.c	/^    char                *rbuf;$/;"	m	struct:rdma_conn	file:
+rbuf_list	client-test.c	/^    char                    **rbuf_list;$/;"	m	struct:rdma_conn	file:
+rbuf_list	libevent-server.c	/^    char                    **rbuf_list;$/;"	m	struct:rdma_conn	file:
+rbuf_list	poll-server.c	/^    char                    **rbuf_list;$/;"	m	struct:rdma_conn	file:
+rdma_cm_event_handle	libevent-server.c	/^rdma_cm_event_handle(int fd, short lib_event, void *arg) {$/;"	f
+rdma_cm_event_handle	poll-server.c	/^rdma_cm_event_handle(int fd, short lib_event, void *arg) {$/;"	f
+rdma_conn	client-test.c	/^struct rdma_conn {$/;"	s	file:
+rdma_conn	libevent-server.c	/^struct rdma_conn {$/;"	s	file:
+rdma_conn	poll-server.c	/^struct rdma_conn {$/;"	s	file:
+rdma_context	client-test.c	/^struct rdma_context {$/;"	s	file:
+rdma_context	libevent-server.c	/^struct rdma_context {$/;"	s	file:
+rdma_context	poll-server.c	/^struct rdma_context {$/;"	s	file:
+rdma_ctx	client-test.c	/^} rdma_ctx;$/;"	v	typeref:struct:rdma_context
+rdma_ctx	libevent-server.c	/^} rdma_ctx;$/;"	v	typeref:struct:rdma_context
+rdma_ctx	poll-server.c	/^} rdma_ctx;$/;"	v	typeref:struct:rdma_context
+recv_cq	client-test.c	/^    struct ibv_cq               *recv_cq;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::ibv_cq	file:
+recv_cq	client-test.c	/^    struct ibv_cq       *recv_cq;$/;"	m	struct:rdma_conn	typeref:struct:rdma_conn::ibv_cq	file:
+recv_msg	client-test.c	/^recv_msg(struct rdma_conn *c) {$/;"	f	file:
+release_conn	libevent-server.c	/^release_conn(struct rdma_conn *c) {$/;"	f
+release_conn	poll-server.c	/^release_conn(struct rdma_conn *c) {$/;"	f
+replace_noreply	client-test.c	/^static char replace_noreply[] = "replace foo 0 0 1 noreply\\r\\n1\\r\\n";$/;"	v	file:
+replace_reply	client-test.c	/^static char replace_reply[] = "replace foo 0 0 1\\r\\n1\\r\\n";$/;"	v	file:
+request_num	libevent-server.c	/^static int      request_num = 1000;$/;"	v	file:
+request_num	poll-server.c	/^static int      request_num = 1000;$/;"	v	file:
+request_number	client-test.c	/^static int      request_number = 10000;$/;"	v	file:
+rmr	client-test.c	/^    struct ibv_mr       *rmr;$/;"	m	struct:rdma_conn	typeref:struct:rdma_conn::ibv_mr	file:
+rmr_list	client-test.c	/^    struct ibv_mr           **rmr_list;$/;"	m	struct:rdma_conn	typeref:struct:rdma_conn::ibv_mr	file:
+rmr_list	libevent-server.c	/^    struct ibv_mr           **rmr_list;$/;"	m	struct:rdma_conn	typeref:struct:rdma_conn::ibv_mr	file:
+rmr_list	poll-server.c	/^    struct ibv_mr           **rmr_list;$/;"	m	struct:rdma_conn	typeref:struct:rdma_conn::ibv_mr	file:
+rsize	client-test.c	/^    size_t                  rsize; $/;"	m	struct:rdma_conn	file:
+rsize	libevent-server.c	/^    size_t                  rsize; $/;"	m	struct:rdma_conn	file:
+rsize	poll-server.c	/^    size_t                  rsize; $/;"	m	struct:rdma_conn	file:
+sbuf	libevent-server.c	/^    char                    *sbuf;$/;"	m	struct:rdma_conn	file:
+sbuf	poll-server.c	/^    char                    *sbuf;$/;"	m	struct:rdma_conn	file:
+send_cq	client-test.c	/^    struct ibv_cq               *send_cq;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::ibv_cq	file:
+send_cq	client-test.c	/^    struct ibv_cq       *send_cq;$/;"	m	struct:rdma_conn	typeref:struct:rdma_conn::ibv_cq	file:
+send_mr	client-test.c	/^send_mr(struct rdma_cm_id *id, struct ibv_mr *mr) {$/;"	f
+set_noreply	client-test.c	/^static char set_noreply[] = "set foo 0 0 1 noreply\\r\\n1\\r\\n";$/;"	v	file:
+set_reply	client-test.c	/^static char set_reply[] = "set foo 0 0 1\\r\\n1\\r\\n";$/;"	v	file:
+smr	libevent-server.c	/^    struct ibv_mr           *smr;$/;"	m	struct:rdma_conn	typeref:struct:rdma_conn::ibv_mr	file:
+smr	poll-server.c	/^    struct ibv_mr           *smr;$/;"	m	struct:rdma_conn	typeref:struct:rdma_conn::ibv_mr	file:
+ssize	libevent-server.c	/^    size_t                  ssize;$/;"	m	struct:rdma_conn	file:
+ssize	poll-server.c	/^    size_t                  ssize;$/;"	m	struct:rdma_conn	file:
+test_with_regmem	client-test.c	/^test_with_regmem(void *arg) {$/;"	f
+thread_number	client-test.c	/^static int      thread_number = 1;$/;"	v	file:
+total_recv	libevent-server.c	/^    int                     total_recv;$/;"	m	struct:rdma_conn	file:
+total_recv	poll-server.c	/^    int                     total_recv;$/;"	m	struct:rdma_conn	file:
+verbose	client-test.c	/^static int      verbose = 0;$/;"	v	file:
+verbose	libevent-server.c	/^static int      verbose = 0;$/;"	v	file:
+verbose	poll-server.c	/^static int      verbose = 0;$/;"	v	file:
+wr_context	libevent-server.c	/^struct wr_context {$/;"	s	file:
+wr_context	poll-server.c	/^struct wr_context {$/;"	s	file:
+wr_ctx_list	client-test.c	/^    struct wr_context       *wr_ctx_list;$/;"	m	struct:rdma_conn	typeref:struct:rdma_conn::wr_context	file:
+wr_ctx_list	libevent-server.c	/^    struct wr_context       *wr_ctx_list;$/;"	m	struct:rdma_conn	typeref:struct:rdma_conn::wr_context	file:
+wr_ctx_list	poll-server.c	/^    struct wr_context       *wr_ctx_list;$/;"	m	struct:rdma_conn	typeref:struct:rdma_conn::wr_context	file:
+wr_size	client-test.c	/^static int      wr_size = 1024;$/;"	v	file:
+wr_size	libevent-server.c	/^static int      wr_size = 1024;$/;"	v	file:
+wr_size	poll-server.c	/^static int      wr_size = 1024;$/;"	v	file:

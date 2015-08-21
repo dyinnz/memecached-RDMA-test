@@ -11,9 +11,10 @@
 #include <rdma/rdma_cma.h>
 #include <rdma/rdma_verbs.h>
 
-#define MAX_BUFF_SIZE 1024
+#define BUFF_SIZE 1024
 #define RDMA_MAX_HEAD 16
-
+#define POLL_WC_SIZE 8
+#define REG_PER_CONN 8
 
 /***************************************************************************//**
  * Testing parameters
@@ -69,6 +70,8 @@ struct rdma_context {
 
 } rdma_ctx;
 
+struct wr_context;
+
 struct rdma_conn {
     struct rdma_cm_id   *id;
 
@@ -78,6 +81,17 @@ struct rdma_conn {
 
     char                *rbuf;
     struct ibv_mr       *rmr;
+
+    struct ibv_mr           **rmr_list;
+    char                    **rbuf_list;
+    struct wr_context       *wr_ctx_list;
+    size_t                  rsize; 
+    size_t                  buff_list_size;
+};
+
+struct wr_context {
+    struct rdma_conn       *c;
+    struct ibv_mr           *mr;
 };
 
 /***************************************************************************//**
@@ -174,10 +188,22 @@ build_connection() {
         return NULL;
     }
 
-    c->rbuf = malloc(MAX_BUFF_SIZE);
-    if ( !(c->rmr = rdma_reg_msgs(c->id, c->rbuf, MAX_BUFF_SIZE)) ) {
-        perror("rdma_reg_msgs()");
-        return NULL;
+    c->buff_list_size = REG_PER_CONN;
+    c->rsize = BUFF_SIZE;
+    c->rbuf_list = calloc(c->buff_list_size, sizeof(char*));
+    c->rmr_list = calloc(c->buff_list_size, sizeof(struct ibv_mr*));
+    c->wr_ctx_list = calloc(c->buff_list_size, sizeof(struct wr_context));
+
+    int i = 0;
+    for (i = 0; i < c->buff_list_size; ++i) {
+        c->rbuf_list[i] = malloc(c->rsize);
+        c->rmr_list[i] = rdma_reg_msgs(c->id, c->rbuf_list[i], c->rsize);
+        c->wr_ctx_list[i].c = c;
+        c->wr_ctx_list[i].mr = c->rmr_list[i];
+        if (0 != rdma_post_recv(c->id, &c->wr_ctx_list[i], c->rmr_list[i]->addr, c->rmr_list[i]->length, c->rmr_list[i])) {
+            perror("rdma_post_recv()");
+            return NULL;
+        }
     }
 
     return c;
@@ -212,11 +238,6 @@ send_mr(struct rdma_cm_id *id, struct ibv_mr *mr) {
  ******************************************************************************/
 static int
 recv_msg(struct rdma_conn *c) {
-    if (0 != rdma_post_recv(c->id, c, c->rmr->addr, c->rmr->length, c->rmr)) {
-        perror("rdma_post_recv()");
-        return -1;
-    }
-
     struct ibv_wc wc;
     int cqe = 0;
     do {
