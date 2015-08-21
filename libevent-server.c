@@ -22,7 +22,8 @@ struct rdma_cm_id *last_id;
  *
  ******************************************************************************/
 
-#define REG_PER_CONN 10
+#define REG_PER_CONN 120
+#define POLL_WC_SIZE 120
 #define REG_NUM 10
 #define REG_SIZE 2048
 
@@ -54,13 +55,15 @@ struct rdma_conn {
     size_t                  buff_list_size;
 
     struct event            poll_event;
+
+    int                     total_recv;
 };
 
 static int      backlog = 1024;
 static int      cq_size = 1024;
 static int      wr_size = 1024;
 static int      max_sge = 8;
-static char     *port = "5555";
+static char     *port = "6666";
 static int      request_num = 1000;
 static int      verbose = 0;
 
@@ -309,7 +312,8 @@ handle_work_complete(struct ibv_wc *wc) {
 
     if (IBV_WC_RECV & wc->opcode) {
         static int count = 0;
-        if (++count % 200 == 0) {
+        ((struct rdma_conn*)(last_id->context))->total_recv += 1;
+        if (++count % 1000 == 0) {
             printf("server has received %d : %s\n", count, (char*)mr->addr);
         }
         if (0 != rdma_post_recv(last_id, wc->wr_id, mr->addr, mr->length, mr)) {
@@ -341,7 +345,7 @@ void
 poll_event_handle(int fd, short lib_event, void *arg) {
     //struct rdma_conn        *c = arg;
     struct ibv_cq           *cq = NULL;
-    struct ibv_wc           wc[10];
+    struct ibv_wc           wc[POLL_WC_SIZE];
 
     int     cqe = 0, i = 0;
     void    *null = NULL;
@@ -361,7 +365,7 @@ poll_event_handle(int fd, short lib_event, void *arg) {
     }
 
     do {
-        if ( -1 == (cqe = ibv_poll_cq(cq, 10, wc)) ) {
+        if ( -1 == (cqe = ibv_poll_cq(cq, POLL_WC_SIZE, wc)) ) {
             perror("ibv_poll_cq");
             return;
         }
@@ -402,6 +406,7 @@ rdma_cm_event_handle(int fd, short lib_event, void *arg) {
             break;
 
         case RDMA_CM_EVENT_DISCONNECTED:
+            printf("total recv: %d\n", c->total_recv);
             release_conn(c);
             break;
 
