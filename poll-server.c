@@ -68,7 +68,7 @@ static int      backlog = 1024;
 static int      cq_size = 1024;
 static int      wr_size = 1024;
 static int      max_sge = 8;
-static char     *port = "5555";
+static char     *port = "6666";
 static int      request_num = 1000;
 static int      verbose = 0;
 
@@ -305,10 +305,12 @@ handle_work_complete(struct ibv_wc *wc) {
             perror("rdma_post_recv()");
             return;
         }
+        /*
         if (0 != rdma_post_send(c->id, c->smr, c->smr->addr, c->smr->length, c->smr, 0)) {
             perror("rdma_post_send()");
             return;
         }
+        */
         return;
     }
 
