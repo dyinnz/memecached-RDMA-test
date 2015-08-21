@@ -111,13 +111,6 @@ init_rdma_global_resources() {
     rdma_ctx.device_ctx = *rdma_ctx.device_ctx_list;
     printf("Get device: %d\n", num_device); 
 
-    /*
-    if ( !(rdma_ctx.comp_channel = ibv_create_comp_channel(rdma_ctx.device_ctx)) ) {
-        perror("ibv_create_comp_channel");
-        return -1;
-    }
-    */
-
     if ( !(rdma_ctx.pd = ibv_alloc_pd(rdma_ctx.device_ctx)) ) {
         perror("ibv_alloc_pd");
         return -1;
@@ -384,7 +377,29 @@ main(int argc, char *argv[]) {
                     finish;
     clock_gettime(CLOCK_REALTIME, &start);
 
-    test_with_regmem(NULL);
+
+    void *(*thread_run)(void*) = test_with_regmem;
+    pthread_t *threads = calloc(thread_number, sizeof(pthread_t));
+
+    if (1 == thread_number) {
+        /* use main thread by default */
+        thread_run(NULL);
+
+    } else {
+        int i = 0;
+        for (i = 0; i < thread_number; ++i) {
+            printf("Thread %d\n begin\n", i);
+
+            if (0 != pthread_create(threads+i, NULL, thread_run, NULL)) {
+                return -1;
+            }
+        }
+
+        for (i = 0; i < thread_number; ++i) {
+            pthread_join(threads[i], NULL);
+            printf("Thread %d terminated.\n", i);
+        }
+    }
 
     clock_gettime(CLOCK_REALTIME, &finish);
 
