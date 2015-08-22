@@ -24,21 +24,22 @@ static int
 on_session_event(struct xio_session             *session, 
                  struct xio_session_event_data  *event_data,
                  void                           *cb_usr_context) {
+    printf("%s\n", __func__);
+
     struct server_data *server_data = cb_usr_context;
     printf("session event: %s; reason: %s\n", xio_session_event_str(event_data->event),
             xio_strerror(event_data->reason));
 
     switch (event_data->event) {
     case XIO_SESSION_NEW_CONNECTION_EVENT:
-        server_data->connection = event_data->conn;
         break;
+
     case XIO_SESSION_CONNECTION_TEARDOWN_EVENT:
         xio_connection_destroy(event_data->conn);
-        server_data->connection = NULL;
         break;
+
     case XIO_SESSION_TEARDOWN_EVENT:
         xio_session_destroy(session);
-        xio_context_stop_loop(server_data->context);
         break;
     default:
         break;
@@ -89,33 +90,31 @@ on_msg(struct xio_session *session, struct xio_msg *msg, int last_in_rxq,
         void *conn_user_context) {
     printf("%s\n", __func__);
 
-    struct server_data      *server_data = conn_user_context;
     struct xio_iovec_ex     *sglist = vmsg_sglist(&msg->in);
-    char                    *str = NULL;
     int                     nents = vmsg_sglist_nents(&msg->in);
+
+    char                    *str = NULL;
     int                     i = 0;
-    //int                     len = 0;
 
     str = msg->in.header.iov_base;
-    //len = msg->in.header.iov_len;
     if (str) {
-        printf("message header: %s, %d\n", str, nents);
+        printf("HEADER: %s;\nDATA NUM: %d\n", str, nents);
     }
 
     for (i = 0; i < nents; ++i) {
         str = sglist[i].iov_base;
-        //len = sglist[i].iov_len;
         if (str) {
-            printf("message header: %s\n", str);
+            printf("DATA: %s\n", str);
         }
     }
 
+    msg->in.header.iov_base = NULL;
+    msg->in.header.iov_len = 0;
     vmsg_sglist_set_nents(&msg->in, 0);
 
+    /* send */
     server_data->send_msg->request = msg;
     xio_send_response(server_data->send_msg);
-
-    printf("msg end.\n");
 
     return 0;
 }
@@ -233,28 +232,22 @@ xio_event_handler(int fd, short event_flag, void *arg) {
 
 int main() {
     struct xio_server       *server = NULL;
-
     struct event_base       *base = NULL;
     struct event            main_event;
-
     struct server_data      server_data;
-
     int         xio_fd = 0;
 
     memset(&server_data, 0, sizeof(struct server_data));
 
     xio_init();
-
     if ( !(server_data.context = xio_context_create(NULL, 0, -1)) ) {
         perror("xio_context_create");
         return -1;
     }
-
     if ( -1 == (xio_fd = xio_context_get_poll_fd(server_data.context)) ) {
         perror("xio_context_get_poll_fd");
         return -1;
     }
-
     if ( !(server = xio_bind(server_data.context, &server_ops, "rdma://127.0.0.1:5555", NULL, 0, &server_data)) ) {
         perror("xio_bind");
         return -1;
