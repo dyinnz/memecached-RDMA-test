@@ -25,22 +25,22 @@ static int
 on_session_event(struct xio_session             *session, 
                  struct xio_session_event_data  *event_data,
                  void                           *cb_usr_context) {
-    printf("session event: %s; reason: %s\n", xio_session_event_str(event_data->event),
+    printf("%s\n", __func__);
+
+    printf("session event: %s. reason: %s\n",
+            xio_session_event_str(event_data->event),
             xio_strerror(event_data->reason));
 
     switch (event_data->event) {
-    case XIO_SESSION_NEW_CONNECTION_EVENT:
-        break;
-    case XIO_SESSION_CONNECTION_TEARDOWN_EVENT:
-        xio_connection_destroy(event_data->conn);
-        break;
-    case XIO_SESSION_TEARDOWN_EVENT:
-        xio_session_destroy(session);
-        xio_context_stop_loop(client_ctx.context);
-        break;
-    default:
-        break;
-    }
+        case XIO_SESSION_CONNECTION_TEARDOWN_EVENT:
+            xio_connection_destroy(event_data->conn);
+            break;
+        case XIO_SESSION_TEARDOWN_EVENT:
+            xio_session_destroy(session);
+            break;
+        default:
+            break;
+    };
 
     return 0;
 }
@@ -52,8 +52,6 @@ static int
 on_new_session(struct xio_session *session, struct xio_new_session_req *req,
               void *cb_user_context) {
     printf("%s\n", __func__);
-
-    xio_accept(session, NULL, 0, NULL, 0);
     return 0;
 }
 
@@ -88,22 +86,18 @@ on_msg(struct xio_session *session, struct xio_msg *msg, int last_in_rxq,
     printf("%s\n", __func__);
 
     struct xio_iovec_ex     *sglist = vmsg_sglist(&msg->in);
-    char                    *str = NULL;
     int                     nents = vmsg_sglist_nents(&msg->in);
     int                     i = 0;
-    //int                     len = 0;
 
     str = msg->in.header.iov_base;
-    //len = msg->in.header.iov_len;
     if (str) {
-        printf("message header: %s, %d\n", str, nents);
+        printf("HEADER: %s;\nDATA NUM:%d\n", str, nents);
     }
 
     for (i = 0; i < nents; ++i) {
         str = sglist[i].iov_base;
-        //len = sglist[i].iov_len;
         if (str) {
-            printf("message header: %s\n", str);
+            printf("DATA: %s\n", str);
         }
     }
     return 0;
@@ -271,7 +265,9 @@ int main(int argc, char *argv[]) {
         strlen((const char *) test_send.out.data_iov.sglist[0].iov_base) + 1;
     test_send.out.data_iov.nents = 1;
 
-    xio_send_request(conn, &test_send);
+    for (int i = 0; i < request_number; ++i) {
+        xio_send_request(conn, &test_send);
+    }
 
     xio_context_run_loop(client_ctx.context, XIO_INFINITE);
 
