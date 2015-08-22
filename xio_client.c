@@ -6,8 +6,6 @@
 #include <unistd.h>
 
 #include <libxio.h>
-#include <event2/event.h>
-#include <event2/event_struct.h>
 
 /*----------------------------------------------------------------------------*
  * struct server_data 
@@ -241,6 +239,7 @@ int main(int argc, char *argv[]) {
     client_ctx.context = xio_context_create(NULL, 0, -1);
 
     struct xio_session_params session_params;
+    memset(&session_params, 0, sizeof(struct xio_session_params));
     session_params.type = XIO_SESSION_CLIENT;
     session_params.ses_ops = &client_ops;
     session_params.user_context = &client_ctx;
@@ -249,6 +248,7 @@ int main(int argc, char *argv[]) {
     struct xio_session *session = xio_session_create(&session_params);
 
     struct xio_connection_params conn_params;
+    memset(&conn_params, 0, sizeof(struct xio_connection_params));
     conn_params.session = session;
     conn_params.ctx = client_ctx.context;
     conn_params.conn_user_context = &client_ctx;
