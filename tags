@@ -4,20 +4,27 @@
 !_TAG_PROGRAM_NAME	Exuberant Ctags	//
 !_TAG_PROGRAM_URL	http://ctags.sourceforge.net	/official site/
 !_TAG_PROGRAM_VERSION	5.9~svn20110310	//
+BUFF_SIZE	client-test.c	14;"	d	file:
 BUFF_SIZE	libevent-server.c	27;"	d	file:
 BUFF_SIZE	poll-server.c	26;"	d	file:
 CFLAGS	makefile	/^CFLAGS 	:= -Wall -g$/;"	m
+DISCONNECT_NR	example-client.c	46;"	d	file:
 LDFLAGS	makefile	/^LDFLAGS := ${LDFLAGS} -lrdmacm -libverbs -lpthread -levent$/;"	m
-MAX_BUFF_SIZE	client-test.c	14;"	d	file:
+POLL_WC_SIZE	client-test.c	16;"	d	file:
 POLL_WC_SIZE	libevent-server.c	26;"	d	file:
 POLL_WC_SIZE	poll-server.c	27;"	d	file:
+PRINT_COUNTER	example-client.c	45;"	d	file:
+QUEUE_DEPTH	example-client.c	44;"	d	file:
 RDMA_MAX_HEAD	client-test.c	15;"	d	file:
+REG_PER_CONN	client-test.c	17;"	d	file:
 REG_PER_CONN	libevent-server.c	25;"	d	file:
 REG_PER_CONN	poll-server.c	25;"	d	file:
 add_noreply	client-test.c	/^static char add_noreply[] = "add foo 0 0 1 noreply\\r\\n1\\r\\n";$/;"	v	file:
 add_reply	client-test.c	/^static char add_reply[] = "add foo 0 0 1\\r\\n1\\r\\n";$/;"	v	file:
 append_noreply	client-test.c	/^static char append_noreply[] = "append foo 0 0 1 noreply\\r\\n1\\r\\n";$/;"	v	file:
 append_reply	client-test.c	/^static char append_reply[] = "append foo 0 0 1\\r\\n1\\r\\n";$/;"	v	file:
+assign_data_in_buf	xio_client.c	/^assign_data_in_buf(struct xio_msg *msg,$/;"	f	file:
+assign_data_in_buf	xio_server.c	/^assign_data_in_buf(struct xio_msg *msg,$/;"	f	file:
 backlog	libevent-server.c	/^static int      backlog = 1024;$/;"	v	file:
 backlog	poll-server.c	/^static int      backlog = 1024;$/;"	v	file:
 base	libevent-server.c	/^    struct event_base           *base;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::event_base	file:
@@ -26,19 +33,30 @@ buff_list_size	client-test.c	/^    size_t                  buff_list_size;$/;"	m
 buff_list_size	libevent-server.c	/^    size_t                  buff_list_size;$/;"	m	struct:rdma_conn	file:
 buff_list_size	poll-server.c	/^    size_t                  buff_list_size;$/;"	m	struct:rdma_conn	file:
 build_connection	client-test.c	/^build_connection() {$/;"	f	file:
+c	client-test.c	/^    struct rdma_conn       *c;$/;"	m	struct:wr_context	typeref:struct:wr_context::rdma_conn	file:
 c	libevent-server.c	/^    struct rdma_conn       *c;$/;"	m	struct:wr_context	typeref:struct:wr_context::rdma_conn	file:
 c	poll-server.c	/^    struct rdma_conn       *c;$/;"	m	struct:wr_context	typeref:struct:wr_context::rdma_conn	file:
+client_context	xio_client.c	/^struct client_context {$/;"	s	file:
+client_ctx	xio_client.c	/^} client_ctx;$/;"	v	typeref:struct:client_context
+client_ops	xio_client.c	/^static struct xio_session_ops  client_ops = {$/;"	v	typeref:struct:xio_session_ops	file:
 cm_channel	client-test.c	/^    struct rdma_event_channel   *cm_channel;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::rdma_event_channel	file:
 cm_channel	libevent-server.c	/^    struct rdma_event_channel   *cm_channel;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::rdma_event_channel	file:
 cm_channel	poll-server.c	/^    struct rdma_event_channel   *cm_channel;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::rdma_event_channel	file:
+cnt	example-client.c	/^	uint64_t		cnt;$/;"	m	struct:session_data	file:
 comp_channel	client-test.c	/^    struct ibv_comp_channel     *comp_channel;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::ibv_comp_channel	file:
 comp_channel	libevent-server.c	/^    struct ibv_comp_channel     *comp_channel;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::ibv_comp_channel	file:
 comp_channel	poll-server.c	/^    struct ibv_comp_channel     *comp_channel;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::ibv_comp_channel	file:
+conn	example-client.c	/^	struct xio_connection	*conn;$/;"	m	struct:session_data	typeref:struct:session_data::xio_connection	file:
+connection	xio_client.c	/^    struct xio_connection   *connection;$/;"	m	struct:client_context	typeref:struct:client_context::xio_connection	file:
+connection	xio_server.c	/^    struct xio_connection   *connection;$/;"	m	struct:server_data	typeref:struct:server_data::xio_connection	file:
+context	xio_client.c	/^    struct xio_context      *context;$/;"	m	struct:client_context	typeref:struct:client_context::xio_context	file:
+context	xio_server.c	/^    struct xio_context      *context;$/;"	m	struct:server_data	typeref:struct:server_data::xio_context	file:
 cq	libevent-server.c	/^    struct ibv_cq               *cq;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::ibv_cq	file:
 cq	poll-server.c	/^    struct ibv_cq               *cq;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::ibv_cq	file:
 cq_size	client-test.c	/^static int      cq_size = 1024;$/;"	v	file:
 cq_size	libevent-server.c	/^static int      cq_size = 1024;$/;"	v	file:
 cq_size	poll-server.c	/^static int      cq_size = 1024;$/;"	v	file:
+ctx	example-client.c	/^	struct xio_context	*ctx;$/;"	m	struct:session_data	typeref:struct:session_data::xio_context	file:
 decr_noreply	client-test.c	/^static char decr_noreply[] = "decr foo 1 noreply\\r\\n";$/;"	v	file:
 decr_reply	client-test.c	/^static char decr_reply[] = "decr foo 1\\r\\n";$/;"	v	file:
 delete_noreply	client-test.c	/^static char delete_noreply[] = "delete foo noreply\\r\\n";$/;"	v	file:
@@ -74,18 +92,48 @@ listen_id	client-test.c	/^    struct rdma_cm_id           *listen_id;$/;"	m	stru
 listen_id	libevent-server.c	/^    struct rdma_cm_id           *listen_id;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::rdma_cm_id	file:
 listen_id	poll-server.c	/^    struct rdma_cm_id           *listen_id;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::rdma_cm_id	file:
 main	client-test.c	/^main(int argc, char *argv[]) {$/;"	f
+main	example-client.c	/^int main(int argc, char *argv[])$/;"	f
 main	libevent-server.c	/^main(int argc, char *argv[]) {$/;"	f
 main	poll-server.c	/^main(int argc, char *argv[]) {$/;"	f
+main	xio_client.c	/^int main() {$/;"	f
+main	xio_server.c	/^int main() {$/;"	f
 max_sge	client-test.c	/^static int      max_sge = 8;$/;"	v	file:
 max_sge	libevent-server.c	/^static int      max_sge = 8;$/;"	v	file:
 max_sge	poll-server.c	/^static int      max_sge = 8;$/;"	v	file:
+mr	client-test.c	/^    struct ibv_mr           *mr;$/;"	m	struct:wr_context	typeref:struct:wr_context::ibv_mr	file:
 mr	libevent-server.c	/^    struct ibv_mr           *mr;$/;"	m	struct:wr_context	typeref:struct:wr_context::ibv_mr	file:
 mr	poll-server.c	/^    struct ibv_mr           *mr;$/;"	m	struct:wr_context	typeref:struct:wr_context::ibv_mr	file:
+nrecv	example-client.c	/^	uint64_t		nrecv;$/;"	m	struct:session_data	file:
+nsent	example-client.c	/^	uint64_t		nsent;$/;"	m	struct:session_data	file:
+on_cancel	xio_client.c	/^on_cancel(struct xio_session *session,$/;"	f	file:
+on_cancel	xio_server.c	/^on_cancel(struct xio_session *session,$/;"	f	file:
+on_cancel_request	xio_client.c	/^on_cancel_request(struct xio_session *session,$/;"	f	file:
+on_cancel_request	xio_server.c	/^on_cancel_request(struct xio_session *session,$/;"	f	file:
+on_msg	xio_client.c	/^on_msg(struct xio_session *session, struct xio_msg *msg, int last_in_rxq,$/;"	f	file:
+on_msg	xio_server.c	/^on_msg(struct xio_session *session, struct xio_msg *msg, int last_in_rxq,$/;"	f	file:
+on_msg_delivered	xio_client.c	/^static int on_msg_delivered(struct xio_session *session, struct xio_msg *msg,$/;"	f	file:
+on_msg_delivered	xio_server.c	/^static int on_msg_delivered(struct xio_session *session, struct xio_msg *msg,$/;"	f	file:
+on_msg_error	xio_client.c	/^on_msg_error(struct xio_session *session, $/;"	f	file:
+on_msg_error	xio_server.c	/^on_msg_error(struct xio_session *session, $/;"	f	file:
+on_msg_send_complete	xio_client.c	/^on_msg_send_complete(struct xio_session *session, struct xio_msg *rsp,$/;"	f	file:
+on_msg_send_complete	xio_server.c	/^on_msg_send_complete(struct xio_session *session, struct xio_msg *rsp,$/;"	f	file:
+on_new_session	xio_client.c	/^on_new_session(struct xio_session *session, struct xio_new_session_req *req,$/;"	f	file:
+on_new_session	xio_server.c	/^on_new_session(struct xio_session *session, struct xio_new_session_req *req,$/;"	f	file:
+on_ow_msg_send_complete	xio_client.c	/^on_ow_msg_send_complete(struct xio_session *session,$/;"	f	file:
+on_ow_msg_send_complete	xio_server.c	/^on_ow_msg_send_complete(struct xio_session *session,$/;"	f	file:
+on_rdma_direct_complete	xio_client.c	/^on_rdma_direct_complete(struct xio_session *session,$/;"	f	file:
+on_rdma_direct_complete	xio_server.c	/^on_rdma_direct_complete(struct xio_session *session,$/;"	f	file:
+on_response	example-client.c	/^static int on_response(struct xio_session *session,$/;"	f	file:
+on_session_established	xio_client.c	/^on_session_established(struct xio_session *session,$/;"	f	file:
+on_session_established	xio_server.c	/^on_session_established(struct xio_session *session,$/;"	f	file:
+on_session_event	example-client.c	/^static int on_session_event(struct xio_session *session,$/;"	f	file:
+on_session_event	xio_client.c	/^on_session_event(struct xio_session             *session, $/;"	f	file:
+on_session_event	xio_server.c	/^on_session_event(struct xio_session             *session, $/;"	f	file:
+pad	example-client.c	/^	uint64_t		pad;$/;"	m	struct:session_data	file:
 pd	client-test.c	/^    struct ibv_pd               *pd;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::ibv_pd	file:
 pd	client-test.c	/^    struct ibv_pd       *pd;$/;"	m	struct:rdma_conn	typeref:struct:rdma_conn::ibv_pd	file:
 pd	libevent-server.c	/^    struct ibv_pd               *pd;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::ibv_pd	file:
 pd	poll-server.c	/^    struct ibv_pd               *pd;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::ibv_pd	file:
-poll_and_work_thread	libevent-server.c	/^poll_and_work_thread(void *arg) {$/;"	f
 poll_and_work_thread	poll-server.c	/^poll_and_work_thread(void *arg) {$/;"	f
 poll_event	libevent-server.c	/^    struct event            poll_event;$/;"	m	struct:rdma_conn	typeref:struct:rdma_conn::event	file:
 poll_event_handle	libevent-server.c	/^poll_event_handle(int fd, short lib_event, void *arg) {$/;"	f
@@ -93,8 +141,10 @@ port	libevent-server.c	/^static char     *port = "6666";$/;"	v	file:
 port	poll-server.c	/^static char     *port = "6666";$/;"	v	file:
 prepend_noreply	client-test.c	/^static char prepend_noreply[] = "prepend foo 0 0 1 noreply\\r\\n1\\r\\n";$/;"	v	file:
 prepend_reply	client-test.c	/^static char prepend_reply[] = "prepend foo 0 0 1\\r\\n1\\r\\n";$/;"	v	file:
+process_response	example-client.c	/^static void process_response(struct session_data *session_data,$/;"	f	file:
 pstr_port	client-test.c	/^static char     *pstr_port = "11211";$/;"	v	file:
 pstr_server	client-test.c	/^static char     *pstr_server = "127.0.0.1";$/;"	v	file:
+queue_depth	example-client.c	/^int queue_depth;$/;"	v
 rbuf	client-test.c	/^    char                *rbuf;$/;"	m	struct:rdma_conn	file:
 rbuf_list	client-test.c	/^    char                    **rbuf_list;$/;"	m	struct:rdma_conn	file:
 rbuf_list	libevent-server.c	/^    char                    **rbuf_list;$/;"	m	struct:rdma_conn	file:
@@ -117,6 +167,7 @@ release_conn	libevent-server.c	/^release_conn(struct rdma_conn *c) {$/;"	f
 release_conn	poll-server.c	/^release_conn(struct rdma_conn *c) {$/;"	f
 replace_noreply	client-test.c	/^static char replace_noreply[] = "replace foo 0 0 1 noreply\\r\\n1\\r\\n";$/;"	v	file:
 replace_reply	client-test.c	/^static char replace_reply[] = "replace foo 0 0 1\\r\\n1\\r\\n";$/;"	v	file:
+req_ring	example-client.c	/^	struct xio_msg		req_ring[QUEUE_DEPTH];$/;"	m	struct:session_data	typeref:struct:session_data::xio_msg	file:
 request_num	libevent-server.c	/^static int      request_num = 1000;$/;"	v	file:
 request_num	poll-server.c	/^static int      request_num = 1000;$/;"	v	file:
 request_number	client-test.c	/^static int      request_number = 10000;$/;"	v	file:
@@ -129,22 +180,33 @@ rsize	libevent-server.c	/^    size_t                  rsize; $/;"	m	struct:rdma_
 rsize	poll-server.c	/^    size_t                  rsize; $/;"	m	struct:rdma_conn	file:
 sbuf	libevent-server.c	/^    char                    *sbuf;$/;"	m	struct:rdma_conn	file:
 sbuf	poll-server.c	/^    char                    *sbuf;$/;"	m	struct:rdma_conn	file:
+send_buff	xio_server.c	/^char send_buff[] = "hello word head response";$/;"	v
 send_cq	client-test.c	/^    struct ibv_cq               *send_cq;$/;"	m	struct:rdma_context	typeref:struct:rdma_context::ibv_cq	file:
 send_cq	client-test.c	/^    struct ibv_cq       *send_cq;$/;"	m	struct:rdma_conn	typeref:struct:rdma_conn::ibv_cq	file:
 send_mr	client-test.c	/^send_mr(struct rdma_cm_id *id, struct ibv_mr *mr) {$/;"	f
+send_msg	xio_client.c	/^    struct xio_msg          *send_msg;$/;"	m	struct:client_context	typeref:struct:client_context::xio_msg	file:
+send_msg	xio_server.c	/^    struct xio_msg          *send_msg;$/;"	m	struct:server_data	typeref:struct:server_data::xio_msg	file:
+server_data	xio_server.c	/^struct server_data {$/;"	s	file:
+server_ops	xio_server.c	/^static struct xio_session_ops  server_ops = {$/;"	v	typeref:struct:xio_session_ops	file:
+ses_ops	example-client.c	/^static struct xio_session_ops ses_ops = {$/;"	v	typeref:struct:xio_session_ops	file:
+session_data	example-client.c	/^struct session_data {$/;"	s	file:
 set_noreply	client-test.c	/^static char set_noreply[] = "set foo 0 0 1 noreply\\r\\n1\\r\\n";$/;"	v	file:
 set_reply	client-test.c	/^static char set_reply[] = "set foo 0 0 1\\r\\n1\\r\\n";$/;"	v	file:
 smr	libevent-server.c	/^    struct ibv_mr           *smr;$/;"	m	struct:rdma_conn	typeref:struct:rdma_conn::ibv_mr	file:
 smr	poll-server.c	/^    struct ibv_mr           *smr;$/;"	m	struct:rdma_conn	typeref:struct:rdma_conn::ibv_mr	file:
 ssize	libevent-server.c	/^    size_t                  ssize;$/;"	m	struct:rdma_conn	file:
 ssize	poll-server.c	/^    size_t                  ssize;$/;"	m	struct:rdma_conn	file:
+swr	libevent-server.c	/^    struct wr_context       swr;$/;"	m	struct:rdma_conn	typeref:struct:rdma_conn::wr_context	file:
+test_disconnect	example-client.c	/^int test_disconnect;$/;"	v
 test_with_regmem	client-test.c	/^test_with_regmem(void *arg) {$/;"	f
 thread_number	client-test.c	/^static int      thread_number = 1;$/;"	v	file:
 total_recv	libevent-server.c	/^    int                     total_recv;$/;"	m	struct:rdma_conn	file:
 total_recv	poll-server.c	/^    int                     total_recv;$/;"	m	struct:rdma_conn	file:
+uri	xio_client.c	/^static char uri[1024] = "rdma:\/\/inode328:6666";$/;"	v	file:
 verbose	client-test.c	/^static int      verbose = 0;$/;"	v	file:
 verbose	libevent-server.c	/^static int      verbose = 0;$/;"	v	file:
 verbose	poll-server.c	/^static int      verbose = 0;$/;"	v	file:
+wr_context	client-test.c	/^struct wr_context {$/;"	s	file:
 wr_context	libevent-server.c	/^struct wr_context {$/;"	s	file:
 wr_context	poll-server.c	/^struct wr_context {$/;"	s	file:
 wr_ctx_list	client-test.c	/^    struct wr_context       *wr_ctx_list;$/;"	m	struct:rdma_conn	typeref:struct:rdma_conn::wr_context	file:
@@ -153,3 +215,5 @@ wr_ctx_list	poll-server.c	/^    struct wr_context       *wr_ctx_list;$/;"	m	stru
 wr_size	client-test.c	/^static int      wr_size = 1024;$/;"	v	file:
 wr_size	libevent-server.c	/^static int      wr_size = 1024;$/;"	v	file:
 wr_size	poll-server.c	/^static int      wr_size = 1024;$/;"	v	file:
+xio_event_handler	xio_client.c	/^xio_event_handler(int fd, short event_flag, void *arg) {$/;"	f	file:
+xio_event_handler	xio_server.c	/^xio_event_handler(int fd, short event_flag, void *arg) {$/;"	f	file:
