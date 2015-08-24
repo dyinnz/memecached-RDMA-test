@@ -127,7 +127,7 @@ init_rdma_thread_resources() {
         return NULL;
     }
 
-    return 0;
+    return ctx;
 }
 
 /***************************************************************************//**
@@ -180,6 +180,9 @@ build_connection(struct thread_context *ctx) {
         perror("rdma_connect()");
         return NULL;
     }
+
+    c->id->recv_cq = ctx->recv_cq;
+    c->id->send_cq = ctx->send_cq;
 
     c->buff_list_size = buff_per_conn;
     c->rsize = BUFF_SIZE;
@@ -355,7 +358,7 @@ int
 main(int argc, char *argv[]) {
     char        c = '\0';
     while (-1 != (c = getopt(argc, argv,
-            "c:"    /* thread number */
+            "t:"    /* thread number */
             "r:"    /* request number per thread */
             "p:"    /* listening port */
             "s:"    /* server ip */
@@ -363,7 +366,7 @@ main(int argc, char *argv[]) {
             "b:"
     ))) {
         switch (c) {
-            case 'c':
+            case 't':
                 thread_number = atoi(optarg);
                 break;
             case 'r':
