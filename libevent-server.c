@@ -22,8 +22,8 @@ struct rdma_cm_id *last_id;
  *
  ******************************************************************************/
 
-#define REG_PER_CONN 128
-#define POLL_WC_SIZE 256
+#define REG_PER_CONN 256
+#define POLL_WC_SIZE 512
 #define BUFF_SIZE 1024
 
 struct rdma_context {
@@ -366,7 +366,7 @@ poll_event_handle(int fd, short lib_event, void *arg) {
         for (i = 0; i < cqe; ++i) {
             handle_work_complete(&wc[i]);
         }
-    } while (cqe == 10);
+    } while (cqe == POLL_WC_SIZE);
 }
 
 /***************************************************************************//**
