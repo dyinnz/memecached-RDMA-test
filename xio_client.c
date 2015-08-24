@@ -6,8 +6,6 @@
 #include <unistd.h>
 
 #include <libxio.h>
-#include <event2/event.h>
-#include <event2/event_struct.h>
 
 /*----------------------------------------------------------------------------*
  * struct server_data 
@@ -89,7 +87,7 @@ on_msg(struct xio_session *session, struct xio_msg *msg, int last_in_rxq,
     int                     nents = vmsg_sglist_nents(&msg->in);
     int                     i = 0;
 
-    str = msg->in.header.iov_base;
+    char *str = msg->in.header.iov_base;
     if (str) {
         printf("HEADER: %s;\nDATA NUM:%d\n", str, nents);
     }
@@ -204,7 +202,7 @@ static struct xio_session_ops  client_ops = {
  *----------------------------------------------------------------------------*/
 
 static char uri[1024] = "";
-static int request_number = 1000;
+static int request_number = 10;
 static char *port = "6666";
 static char *server = "0.0.0.0";
 
@@ -235,6 +233,7 @@ int main(int argc, char *argv[]) {
     client_ctx.context = xio_context_create(NULL, 0, -1);
 
     struct xio_session_params session_params;
+    memset(&session_params, 0, sizeof(struct xio_session_params));
     session_params.type = XIO_SESSION_CLIENT;
     session_params.ses_ops = &client_ops;
     session_params.user_context = &client_ctx;
@@ -243,6 +242,7 @@ int main(int argc, char *argv[]) {
     struct xio_session *session = xio_session_create(&session_params);
 
     struct xio_connection_params conn_params;
+    memset(&conn_params, 0, sizeof(struct xio_connection_params));
     conn_params.session = session;
     conn_params.ctx = client_ctx.context;
     conn_params.conn_user_context = &client_ctx;
@@ -265,7 +265,8 @@ int main(int argc, char *argv[]) {
         strlen((const char *) test_send.out.data_iov.sglist[0].iov_base) + 1;
     test_send.out.data_iov.nents = 1;
 
-    for (int i = 0; i < request_number; ++i) {
+    int i = 0;
+    for (i = 0; i < request_number; ++i) {
         xio_send_request(conn, &test_send);
     }
 

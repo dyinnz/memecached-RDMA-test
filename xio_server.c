@@ -6,7 +6,7 @@
 #include <event2/event.h>
 #include <event2/event_struct.h>
 
-char send_buff[] = "hello word head response";
+char send_buff[] = "this is server";
 
 /*----------------------------------------------------------------------------*
  * struct server_data 
@@ -26,7 +26,6 @@ on_session_event(struct xio_session             *session,
                  void                           *cb_usr_context) {
     printf("%s\n", __func__);
 
-    struct server_data *server_data = cb_usr_context;
     printf("session event: %s; reason: %s\n", xio_session_event_str(event_data->event),
             xio_strerror(event_data->reason));
 
@@ -88,7 +87,7 @@ on_msg_send_complete(struct xio_session *session, struct xio_msg *rsp,
 static int 
 on_msg(struct xio_session *session, struct xio_msg *msg, int last_in_rxq,
         void *conn_user_context) {
-    printf("%s\n", __func__);
+ //   printf("%s\n", __func__);
 
     struct xio_iovec_ex     *sglist = vmsg_sglist(&msg->in);
     int                     nents = vmsg_sglist_nents(&msg->in);
@@ -98,13 +97,13 @@ on_msg(struct xio_session *session, struct xio_msg *msg, int last_in_rxq,
 
     str = msg->in.header.iov_base;
     if (str) {
-        printf("HEADER: %s;\nDATA NUM: %d\n", str, nents);
+  //      printf("HEADER: %s;\nDATA NUM: %d\n", str, nents);
     }
 
     for (i = 0; i < nents; ++i) {
         str = sglist[i].iov_base;
         if (str) {
-            printf("DATA: %s\n", str);
+  //          printf("DATA: %s\n", str);
         }
     }
 
@@ -113,8 +112,15 @@ on_msg(struct xio_session *session, struct xio_msg *msg, int last_in_rxq,
     vmsg_sglist_set_nents(&msg->in, 0);
 
     /* send */
-    server_data->send_msg->request = msg;
-    xio_send_response(server_data->send_msg);
+    struct server_data *server_data = conn_user_context;
+    //server_data->send_msg->request = msg;
+    //msg->request = server_data->send_msg;
+    //xio_send_response(server_data->send_msg);
+    //
+    static int count = 0;
+    if (++count % 100 == 0) {
+        printf("%s, count %d, nents %d\n", __func__, count, nents);
+    }
 
     return 0;
 }
@@ -248,12 +254,12 @@ int main() {
         perror("xio_context_get_poll_fd");
         return -1;
     }
-    if ( !(server = xio_bind(server_data.context, &server_ops, "rdma://127.0.0.1:5555", NULL, 0, &server_data)) ) {
+    if ( !(server = xio_bind(server_data.context, &server_ops, "rdma://127.0.0.1:6666", NULL, 0, &server_data)) ) {
         perror("xio_bind");
         return -1;
     }
 
-    server_data.send_msg = calloc(0, sizeof(struct xio_msg));
+    server_data.send_msg = calloc(1, sizeof(struct xio_msg));
     server_data.send_msg->out.header.iov_base = send_buff;
     server_data.send_msg->out.header.iov_len = sizeof(send_buff);
 
