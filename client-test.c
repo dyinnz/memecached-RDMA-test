@@ -10,9 +10,6 @@
 #include <rdma/rdma_verbs.h>
 
 #define BUFF_SIZE 1024
-#define RDMA_MAX_HEAD 16
-#define POLL_WC_SIZE 128
-#define REG_PER_CONN 128
 
 /***************************************************************************//**
  * Testing parameters
@@ -22,11 +19,12 @@ static char     *pstr_server = "127.0.0.1";
 static char     *pstr_port = "11211";
 static int      thread_number = 1;
 static int      request_number = 10000;
-static int      last_time = 1000;    /* secs */
 static int      verbose = 0;
 static int      cq_size = 1024;
 static int      wr_size = 1024;
 static int      max_sge = 8;
+static int      buff_per_conn = 128;
+static int      poll_wc_size = 128;
 
 /***************************************************************************//**
  * Testing message
@@ -54,19 +52,20 @@ static char delete_reply[] = "delete foo\r\n";
  * Relative resources around connection
  *
  ******************************************************************************/
-struct rdma_context {
+struct thread_context {
     struct ibv_context          **device_ctx_list;
     struct ibv_context          *device_ctx;
     struct ibv_comp_channel     *comp_channel;
     struct ibv_pd               *pd;
+    struct ibv_srq              *srq;
     struct ibv_cq               *send_cq;
     struct ibv_cq               *recv_cq;
 
     struct rdma_event_channel   *cm_channel;
-    
     struct rdma_cm_id           *listen_id;
-
-} rdma_ctx;
+    
+    int                         thread_id;
+};
 
 struct wr_context;
 
@@ -97,36 +96,38 @@ struct wr_context {
  * Init rdma global resources
  *
  ******************************************************************************/
-int
-init_rdma_global_resources() {
-    memset(&rdma_ctx, 0, sizeof(struct rdma_context));
+static struct thread_context*
+init_rdma_thread_resources() {
+    struct thread_context *ctx = calloc(1, sizeof(struct thread_context));
 
     int num_device;
-    if ( !(rdma_ctx.device_ctx_list = rdma_get_devices(&num_device)) ) {
+    if ( !(ctx->device_ctx_list = rdma_get_devices(&num_device)) ) {
         perror("rdma_get_devices()");
-        return -1;
+        return NULL;
     }
-    rdma_ctx.device_ctx = *rdma_ctx.device_ctx_list;
-    printf("Get device: %d\n", num_device); 
+    ctx->device_ctx = *ctx->device_ctx_list;
+    if (verbose) {
+        printf("Get device: %d\n", num_device); 
+    }
 
-    if ( !(rdma_ctx.pd = ibv_alloc_pd(rdma_ctx.device_ctx)) ) {
+    if ( !(ctx->pd = ibv_alloc_pd(ctx->device_ctx)) ) {
         perror("ibv_alloc_pd");
-        return -1;
+        return NULL;
     }
 
-    if ( !(rdma_ctx.send_cq = ibv_create_cq(rdma_ctx.device_ctx, 
+    if ( !(ctx->send_cq = ibv_create_cq(ctx->device_ctx, 
                     cq_size, NULL, NULL, 0)) ) {
         perror("ibv_create_cq");
-        return -1;
+        return NULL;
     }
 
-    if ( !(rdma_ctx.recv_cq = ibv_create_cq(rdma_ctx.device_ctx, 
+    if ( !(ctx->recv_cq = ibv_create_cq(ctx->device_ctx, 
                     cq_size, NULL, NULL, 0)) ) {
         perror("ibv_create_cq");
-        return -1;
+        return NULL;
     }
 
-     return 0;
+    return 0;
 }
 
 /***************************************************************************//**
@@ -134,8 +135,9 @@ init_rdma_global_resources() {
  *
  ******************************************************************************/
 static struct rdma_conn *
-build_connection() {
-    struct rdma_conn        *c = calloc(1, sizeof(struct rdma_conn));
+build_connection(struct thread_context *ctx) {
+    struct rdma_conn *c = calloc(1, sizeof(struct rdma_conn));
+
     if (0 != rdma_create_id(NULL, &c->id, c, RDMA_PS_TCP)) {
         perror("rdma_create_id()");
         return NULL;
@@ -166,10 +168,10 @@ build_connection() {
     qp_attr.cap.max_recv_sge = max_sge;
     qp_attr.sq_sig_all = 1;
     qp_attr.qp_type = IBV_QPT_RC;
-    qp_attr.send_cq = rdma_ctx.send_cq;
-    qp_attr.recv_cq = rdma_ctx.recv_cq;
+    qp_attr.send_cq = ctx->send_cq;
+    qp_attr.recv_cq = ctx->recv_cq;
 
-    if (0 != rdma_create_qp(c->id, rdma_ctx.pd, &qp_attr)) {
+    if (0 != rdma_create_qp(c->id, ctx->pd, &qp_attr)) {
         perror("rdma_create_qp()");
         return NULL;;
     }
@@ -179,7 +181,7 @@ build_connection() {
         return NULL;
     }
 
-    c->buff_list_size = REG_PER_CONN;
+    c->buff_list_size = buff_per_conn;
     c->rsize = BUFF_SIZE;
     c->rbuf_list = calloc(c->buff_list_size, sizeof(char*));
     c->rmr_list = calloc(c->buff_list_size, sizeof(struct ibv_mr*));
@@ -203,9 +205,9 @@ build_connection() {
 /***************************************************************************//**
  * send mr
  ******************************************************************************/
-int 
+static int 
 send_mr(struct rdma_cm_id *id, struct ibv_mr *mr) {
-    if (0 != rdma_post_send(id, id->context, mr->addr, mr->length, mr, 0)) {
+    if (0 != rdma_post_send(id, NULL, mr->addr, mr->length, mr, 0)) {
         perror("rdma_post_send()");
         return -1;
     }
@@ -213,7 +215,7 @@ send_mr(struct rdma_cm_id *id, struct ibv_mr *mr) {
     struct ibv_wc wc;
     int cqe = 0;
     do {
-        cqe = ibv_poll_cq(rdma_ctx.send_cq, 1, &wc);
+        cqe = ibv_poll_cq(id->send_cq, 1, &wc);
     } while (cqe == 0);
 
     if (cqe < 0) {
@@ -232,7 +234,7 @@ recv_msg(struct rdma_conn *c) {
     struct ibv_wc wc;
     int cqe = 0;
     do {
-        cqe = ibv_poll_cq(rdma_ctx.recv_cq, 1, &wc);
+        cqe = ibv_poll_cq(c->id->recv_cq, 1, &wc);
     } while (cqe == 0);
 
     if (cqe < 0) {
@@ -254,19 +256,19 @@ recv_msg(struct rdma_conn *c) {
  * Test command with registered memory
  *
  ******************************************************************************/
-void *
-test_with_regmem(void *arg) {
+static void
+test_with_regmem(struct thread_context *ctx) {
     struct rdma_conn *c = NULL;
     struct timespec start,
                     finish;
     int i = 0;
 
     clock_gettime(CLOCK_REALTIME, &start);
-    if ( !(c = build_connection()) ) {
-        return NULL;
+    if ( !(c = build_connection(ctx)) ) {
+        return;
     }
 
-    printf("noreply:\n");
+    printf("[%d] noreply:\n", ctx->thread_id);
 
     struct ibv_mr   *add_noreply_mr = rdma_reg_msgs(c->id, add_noreply, sizeof(add_noreply));
     struct ibv_mr   *set_noreply_mr = rdma_reg_msgs(c->id, set_noreply, sizeof(set_noreply));
@@ -289,10 +291,10 @@ test_with_regmem(void *arg) {
     }
 
     clock_gettime(CLOCK_REALTIME, &finish);
-    printf("Cost time: %lf secs\n", (double)(finish.tv_sec-start.tv_sec + 
-                (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
+    printf("[%d] Cost time: %lf secs\n", ctx->thread_id, 
+        (double)(finish.tv_sec-start.tv_sec + (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
 
-    printf("\nreply:\n");
+    printf("[%d] reply:\n", ctx->thread_id);
     clock_gettime(CLOCK_REALTIME, &start);
 
     struct ibv_mr   *add_reply_mr = rdma_reg_msgs(c->id, add_reply, sizeof(add_reply));
@@ -324,8 +326,24 @@ test_with_regmem(void *arg) {
     }
 
     clock_gettime(CLOCK_REALTIME, &finish);
-    printf("Cost time: %lf secs\n", (double)(finish.tv_sec-start.tv_sec + 
-                (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
+    printf("[%d] Cost time: %lf secs\n", ctx->thread_id, 
+            (double)(finish.tv_sec-start.tv_sec + (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
+}
+
+/***************************************************************************//**
+ * thread run
+ *
+ ******************************************************************************/
+void *
+thread_run(void *arg) {
+    int thread_id = (int)arg;
+    struct thread_context *ctx = init_rdma_thread_resources();
+    if (!ctx) {
+        return NULL;
+    }
+
+    ctx->thread_id = thread_id;
+    test_with_regmem(ctx);
     return NULL;
 }
 
@@ -339,11 +357,10 @@ main(int argc, char *argv[]) {
     while (-1 != (c = getopt(argc, argv,
             "c:"    /* thread number */
             "r:"    /* request number per thread */
-            "t:"    /* last time, secs */
             "p:"    /* listening port */
             "s:"    /* server ip */
-            "R"     /* whether receive message from server */
             "v"     /* verbose */
+            "b:"
     ))) {
         switch (c) {
             case 'c':
@@ -351,9 +368,6 @@ main(int argc, char *argv[]) {
                 break;
             case 'r':
                 request_number = atoi(optarg);
-                break;
-            case 't':
-                last_time = atoi(optarg);
                 break;
             case 'p':
                 pstr_port = optarg;
@@ -364,19 +378,21 @@ main(int argc, char *argv[]) {
             case 'v':
                 verbose = 1;
                 break;
+            case 'b':
+                buff_per_conn = atoi(optarg);
+                break;
+            case 'w':
+                poll_wc_size = atoi(optarg);
             default:
                 assert(0);
         }
     }
-
-    init_rdma_global_resources();
 
     struct timespec start,
                     finish;
     clock_gettime(CLOCK_REALTIME, &start);
 
 
-    void *(*thread_run)(void*) = test_with_regmem;
     pthread_t *threads = calloc(thread_number, sizeof(pthread_t));
 
     if (1 == thread_number) {
@@ -388,7 +404,7 @@ main(int argc, char *argv[]) {
         for (i = 0; i < thread_number; ++i) {
             printf("Thread %d\n begin\n", i);
 
-            if (0 != pthread_create(threads+i, NULL, thread_run, NULL)) {
+            if (0 != pthread_create(threads+i, NULL, thread_run, (void*)i)) {
                 return -1;
             }
         }
@@ -401,7 +417,7 @@ main(int argc, char *argv[]) {
 
     clock_gettime(CLOCK_REALTIME, &finish);
 
-    printf("Cost time: %lf secs\n", (double)(finish.tv_sec-start.tv_sec + 
+    printf("MAIN Cost time: %lf secs\n", (double)(finish.tv_sec-start.tv_sec + 
                 (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
     return 0;
 }
