@@ -220,10 +220,13 @@ send_mr(struct rdma_cm_id *id, struct ibv_mr *mr) {
     do {
         cqe = ibv_poll_cq(id->send_cq, 1, &wc);
     } while (cqe == 0);
-
+    
     if (cqe < 0) {
         return -1;
     } else {
+        if (IBV_WC_SUCCESS != wc.status) {
+            printf("BAD WC [%d]\n", wc.status);
+        }
         return 0;
     }
 }
