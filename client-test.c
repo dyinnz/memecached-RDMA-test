@@ -23,7 +23,7 @@ static int      verbose = 0;
 static int      cq_size = 1024;
 static int      wr_size = 1024;
 static int      max_sge = 8;
-static int      buff_per_conn = 128;
+static int      buff_per_conn = 4;
 static int      poll_wc_size = 128;
 
 /***************************************************************************//**
@@ -226,6 +226,17 @@ send_mr(struct rdma_cm_id *id, struct ibv_mr *mr) {
     } else {
         if (IBV_WC_SUCCESS != wc.status) {
             printf("BAD WC [%d]\n", wc.status);
+            if (0 != rdma_post_send(id, NULL, mr->addr, mr->length, mr, 0)) {
+                perror("rdma_post_send()");
+                return -1;
+            }
+
+            struct ibv_wc wc;
+            int cqe = 0;
+            do {
+                cqe = ibv_poll_cq(id->send_cq, 1, &wc);
+            } while (cqe == 0);
+            printf("THE NEW WC [%d]\n", wc.status);
         }
         return 0;
     }
@@ -366,6 +377,8 @@ test_large_memory(struct thread_context *ctx) {
     printf("[%d] Cost time: %lf secs\n", ctx->thread_id, 
         (double)(finish.tv_sec-start.tv_sec + (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
 
+    return;
+
     printf("[%d] reply:\n", ctx->thread_id);
     clock_gettime(CLOCK_REALTIME, &start);
 
@@ -412,8 +425,8 @@ thread_run(void *arg) {
     }
 
     ctx->thread_id = thread_id;
-    // test_with_regmem(ctx);
-    test_large_memory(ctx);
+    test_with_regmem(ctx);
+    //test_large_memory(ctx);
     return NULL;
 }
 

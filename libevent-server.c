@@ -22,8 +22,8 @@ struct rdma_cm_id *last_id;
  *
  ******************************************************************************/
 
-#define REG_PER_CONN 4
-#define POLL_WC_SIZE 4
+#define REG_PER_CONN 128
+#define POLL_WC_SIZE 128
 #define BUFF_SIZE 1024
 
 struct rdma_context {
@@ -266,6 +266,20 @@ handle_connect_request(struct rdma_cm_id *id) {
     c->rbuf_list = calloc(c->buff_list_size, sizeof(char*));
     c->rmr_list = calloc(c->buff_list_size, sizeof(struct ibv_mr*));
     c->wr_ctx_list = calloc(c->buff_list_size, sizeof(struct wr_context));
+
+    /*
+    size_t large_size = 10240;
+    char *buff = malloc(large_size);
+    struct ibv_mr *new_mr = rdma_reg_msgs(c->id, buff, large_size);
+    struct wr_context *wr_ctx = malloc(sizeof(struct wr_context));
+    wr_ctx->c = c;
+    wr_ctx->mr = new_mr;
+    if (0 != rdma_post_recv(c->id, wr_ctx, new_mr->addr, new_mr->length, new_mr)) {
+        perror("rdma_post_recv() in post_larger_memory()");
+        return;
+    }
+    */
+
 
     int i = 0;
     for (i = 0; i < c->buff_list_size; ++i) {
