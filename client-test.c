@@ -334,6 +334,69 @@ test_with_regmem(struct thread_context *ctx) {
 }
 
 /***************************************************************************//**
+ * Test large memory
+ *
+ ******************************************************************************/
+static char large_add_noreply[10240] = "add foo 0 0 1 noreply\r\n1\r\n";
+static char large_add_reply[10240] = "add foo 0 0 1\r\n1\r\n";
+
+static void 
+test_large_memory(struct thread_context *ctx) {
+    struct rdma_conn *c = NULL;
+    struct timespec start,
+                    finish;
+    int i = 0;
+
+    clock_gettime(CLOCK_REALTIME, &start);
+    if ( !(c = build_connection(ctx)) ) {
+        return;
+    }
+
+    printf("[%d] large, noreply:\n", ctx->thread_id);
+
+    struct ibv_mr *add_noreply_mr = rdma_reg_msgs(c->id, large_add_noreply, sizeof(large_add_noreply));
+    for (i = 0; i < request_number; ++i) {
+        send_mr(c->id, add_noreply_mr);
+    }
+
+    clock_gettime(CLOCK_REALTIME, &finish);
+    printf("[%d] Cost time: %lf secs\n", ctx->thread_id, 
+        (double)(finish.tv_sec-start.tv_sec + (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
+
+    printf("[%d] reply:\n", ctx->thread_id);
+    clock_gettime(CLOCK_REALTIME, &start);
+
+    struct ibv_mr *add_reply_mr = rdma_reg_msgs(c->id, large_add_reply, sizeof(large_add_reply));
+    for (i = 0; i < request_number; ++i) {
+        send_mr(c->id, add_reply_mr);
+        recv_msg(c);
+    }
+
+    clock_gettime(CLOCK_REALTIME, &finish);
+    printf("[%d] Cost time: %lf secs\n", ctx->thread_id, 
+            (double)(finish.tv_sec-start.tv_sec + (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
+}
+
+/***************************************************************************//**
+ *  
+ ******************************************************************************/
+static void
+test_max_conns(struct thread_context *ctx) {
+    max_sge = 1;
+    wr_size = 1;
+    buff_per_conn = 1;
+    int i = 0; 
+
+    struct rdma_conn *c = NULL;
+    for (i = 0; i < request_number; ++i) {
+        if ( !(c = build_connection(ctx)) ) {
+            break;
+        }
+    }
+    printf("send %d conns\n", i);
+}
+
+/***************************************************************************//**
  * thread run
  *
  ******************************************************************************/
@@ -346,7 +409,8 @@ thread_run(void *arg) {
     }
 
     ctx->thread_id = thread_id;
-    test_with_regmem(ctx);
+    // test_with_regmem(ctx);
+    test_large_memory(ctx);
     return NULL;
 }
 
