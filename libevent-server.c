@@ -74,6 +74,14 @@ static char     *port = "6666";
 static int      request_num = 1000;
 static int      verbose = 0;
 
+int init_rdma_global_resources();
+int init_rdma_listen();
+int init_and_dispatch_event();
+void release_conn(struct rdma_conn *c);
+int handle_connect_request(struct rdma_cm_id *id);
+void handle_work_complete(struct ibv_wc *wc);
+void post_larger_memory(struct rdma_conn *c, struct ibv_mr *mr);
+
 void rdma_cm_event_handle(int fd, short lib_event, void *arg);
 void poll_event_handle(int fd, short lib_event, void *arg);
 
@@ -292,7 +300,8 @@ handle_work_complete(struct ibv_wc *wc) {
     struct rdma_conn *c = wr_ctx->c;
 
     if (IBV_WC_SUCCESS != wc->status) {
-        printf("bad wc!\n");
+        printf("BAD WC [%d]\n", (int)wc->status);
+        post_larger_memory(c, mr);
         return;
     }
 
@@ -327,6 +336,23 @@ handle_work_complete(struct ibv_wc *wc) {
             break;
         default:
             break;
+    }
+}
+
+/***************************************************************************//**
+ *  
+ ******************************************************************************/
+void
+post_larger_memory(struct rdma_conn *c, struct ibv_mr *mr) {
+    size_t large_size = mr->length * 2;
+    char *buff = malloc(large_size);
+    struct ibv_mr *new_mr = rdma_reg_msgs(c->id, buff, large_size);
+    struct wr_context *wr_ctx = malloc(sizeof(struct wr_context));
+    wr_ctx->c = c;
+    wr_ctx->mr = new_mr;
+    if (0 != rdma_post_recv(c->id, wr_ctx, new_mr->addr, new_mr->length, new_mr)) {
+        perror("rdma_post_recv() in post_larger_memory()");
+        return;
     }
 }
 
