@@ -22,8 +22,8 @@ struct rdma_cm_id *last_id;
  *
  ******************************************************************************/
 
-#define REG_PER_CONN 256
-#define POLL_WC_SIZE 512
+#define REG_PER_CONN 4
+#define POLL_WC_SIZE 4
 #define BUFF_SIZE 1024
 
 struct rdma_context {
@@ -300,8 +300,10 @@ handle_work_complete(struct ibv_wc *wc) {
     struct rdma_conn *c = wr_ctx->c;
 
     if (IBV_WC_SUCCESS != wc->status) {
-        printf("BAD WC [%d]\n", (int)wc->status);
-        post_larger_memory(c, mr);
+        printf("BAD WC [%d], buff length: %zd\n", (int)wc->status, mr->length);
+        if (IBV_WC_LOC_LEN_ERR == wc->status) {
+            post_larger_memory(c, mr);
+        }
         return;
     }
 
@@ -344,7 +346,7 @@ handle_work_complete(struct ibv_wc *wc) {
  ******************************************************************************/
 void
 post_larger_memory(struct rdma_conn *c, struct ibv_mr *mr) {
-    size_t large_size = mr->length * 2;
+    size_t large_size = mr->length * 20;
     char *buff = malloc(large_size);
     struct ibv_mr *new_mr = rdma_reg_msgs(c->id, buff, large_size);
     struct wr_context *wr_ctx = malloc(sizeof(struct wr_context));
