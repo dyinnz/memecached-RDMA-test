@@ -260,6 +260,10 @@ recv_msg(struct rdma_conn *c) {
     
     struct wr_context *wr_ctx = (struct wr_context*)(uintptr_t)wc.wr_id;
     struct ibv_mr *mr = wr_ctx->mr;
+
+    if (verbose) {
+        printf("CLIENT RECV:\n%s\n", (char*)mr->addr);
+    }
     
     if (0 != rdma_post_recv(c->id, wr_ctx, mr->addr, mr->length, mr)) {
         perror("rdma_post_recv()");
@@ -410,6 +414,52 @@ test_max_conns(struct thread_context *ctx) {
         }
     }
     printf("send %d conns\n", i);
+}
+
+/***************************************************************************//**
+ *  
+ ******************************************************************************/
+#define SPLIT_SIZE 16384
+static char split_add_noreply[32768] = "add foo 0 0 20000 noreply\r\n???";
+static char split_add_reply[32768] = "add foo 0 0 20000\r\n???";
+
+static void
+split_and_send_large_memory(struct rdma_conn *c, char *mem, size_t length) {
+    size_t rlen = length;
+    char *p = mem;
+
+    struct ibv_mr *mr = NULL;
+    size_t mem_len = 0;
+
+    while (rlen > 0) {
+        mem_len = rlen < SPLIT_SIZE ? rlen : SPLIT_SIZE;
+        mr = rdma_reg_msgs(c->id, p, mem_len);
+        rlen -= mem_len;
+
+        send_mr(c->id, mr);
+        rdma_dereg_mr(mr);
+    }
+}
+
+static void
+test_split_memory(struct thread_context *ctx) {
+    struct rdma_conn *c = NULL;
+    struct timespec start,
+                    finish;
+    int i = 0;
+
+    clock_gettime(CLOCK_REALTIME, &start);
+    if ( !(c = build_connection(ctx)) ) {
+        return;
+    }
+
+    printf("[%d] split, noreply:\n", ctx->thread_id);
+
+    split_and_send_large_memory(c, split_add_reply, 32768);
+
+    clock_gettime(CLOCK_REALTIME, &finish);
+    printf("[%d] Cost time: %lf secs\n", ctx->thread_id, 
+        (double)(finish.tv_sec-start.tv_sec + (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
 }
 
 /***************************************************************************//**
