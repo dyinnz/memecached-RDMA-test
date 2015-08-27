@@ -9,7 +9,7 @@
 #include <rdma/rdma_cma.h>
 #include <rdma/rdma_verbs.h>
 
-#define BUFF_SIZE 1024
+#define BUFF_SIZE 4096
 
 /***************************************************************************//**
  * Testing parameters
@@ -22,7 +22,7 @@ static int      request_number = 10000;
 static int      verbose = 0;
 static int      cq_size = 1024;
 static int      wr_size = 1024;
-static int      max_sge = 8;
+static int      max_sge = 16;
 static int      buff_per_conn = 4;
 static int      poll_wc_size = 128;
 
@@ -46,6 +46,7 @@ static char append_reply[] = "append foo 0 0 1\r\n1\r\n";
 static char prepend_reply[] = "prepend foo 0 0 1\r\n1\r\n";
 static char incr_reply[] = "incr foo 1\r\n";
 static char decr_reply[] = "decr foo 1\r\n";
+static char get_reply[] = "get foo\r\n";
 static char delete_reply[] = "delete foo\r\n";
 
 /***************************************************************************//**
@@ -262,7 +263,7 @@ recv_msg(struct rdma_conn *c) {
     struct ibv_mr *mr = wr_ctx->mr;
 
     if (verbose) {
-        printf("CLIENT RECV:\n%s\n", (char*)mr->addr);
+        printf("CLIENT RECV, length %d:\n%s\n", wc.byte_len, (char*)mr->addr);
     }
     
     if (0 != rdma_post_recv(c->id, wr_ctx, mr->addr, mr->length, mr)) {
@@ -277,6 +278,7 @@ recv_msg(struct rdma_conn *c) {
  * Test command with registered memory
  *
  ******************************************************************************/
+static char kValue[] = "VALUE ";
 static void
 test_with_regmem(struct thread_context *ctx) {
     struct rdma_conn *c = NULL;
@@ -290,6 +292,11 @@ test_with_regmem(struct thread_context *ctx) {
     }
 
     printf("[%d] noreply:\n", ctx->thread_id);
+
+    struct ibv_mr   *mr = rdma_reg_msgs(c->id, kValue, 6);
+    if (!mr) {
+        perror("rdma_reg_msgs()");
+    }
 
     struct ibv_mr   *add_noreply_mr = rdma_reg_msgs(c->id, add_noreply, sizeof(add_noreply));
     struct ibv_mr   *set_noreply_mr = rdma_reg_msgs(c->id, set_noreply, sizeof(set_noreply));
@@ -325,6 +332,7 @@ test_with_regmem(struct thread_context *ctx) {
     struct ibv_mr   *prepend_reply_mr = rdma_reg_msgs(c->id, prepend_reply, sizeof(prepend_reply));
     struct ibv_mr   *incr_reply_mr = rdma_reg_msgs(c->id, incr_reply, sizeof(incr_reply));
     struct ibv_mr   *decr_reply_mr = rdma_reg_msgs(c->id, decr_reply, sizeof(decr_reply));
+    struct ibv_mr   *get_reply_mr = rdma_reg_msgs(c->id, get_reply, sizeof(get_reply));
     struct ibv_mr   *delete_reply_mr = rdma_reg_msgs(c->id, delete_reply, sizeof(delete_reply));
 
     for (i = 0; i < request_number; ++i) {
@@ -341,6 +349,8 @@ test_with_regmem(struct thread_context *ctx) {
         send_mr(c->id, incr_reply_mr);
         recv_msg(c);
         send_mr(c->id, decr_reply_mr);
+        recv_msg(c);
+        send_mr(c->id, get_reply_mr);
         recv_msg(c);
         send_mr(c->id, delete_reply_mr);
         recv_msg(c);
@@ -420,8 +430,8 @@ test_max_conns(struct thread_context *ctx) {
  *  
  ******************************************************************************/
 #define SPLIT_SIZE 16384
-static char split_add_noreply[32768] = "add foo 0 0 20000 noreply\r\n???";
 static char split_add_reply[32768] = "add foo 0 0 20000\r\n???";
+static char split_delete_reply[32768] = "delete foo\r\n";
 
 static void
 split_and_send_large_memory(struct rdma_conn *c, char *mem, size_t length) {
@@ -438,6 +448,8 @@ split_and_send_large_memory(struct rdma_conn *c, char *mem, size_t length) {
 
         send_mr(c->id, mr);
         rdma_dereg_mr(mr);
+        
+        p += mem_len;
     }
 }
 
@@ -453,9 +465,18 @@ test_split_memory(struct thread_context *ctx) {
         return;
     }
 
+    struct ibv_mr   *delete_reply_mr = rdma_reg_msgs(c->id, delete_reply, sizeof(delete_reply));
+
     printf("[%d] split, noreply:\n", ctx->thread_id);
 
-    split_and_send_large_memory(c, split_add_reply, 32768);
+    split_add_reply[20019] = '\r';
+    split_add_reply[20020] = '\n';
+    for (i = 0; i < request_number; ++i) {
+        split_and_send_large_memory(c, split_add_reply, 32768);
+        recv_msg(c);
+        send_mr(c->id, delete_reply_mr);
+        recv_msg(c);
+    }
 
     clock_gettime(CLOCK_REALTIME, &finish);
     printf("[%d] Cost time: %lf secs\n", ctx->thread_id, 
@@ -475,8 +496,9 @@ thread_run(void *arg) {
     }
 
     ctx->thread_id = thread_id;
-    test_with_regmem(ctx);
+    //test_with_regmem(ctx);
     //test_large_memory(ctx);
+    test_split_memory(ctx);
     return NULL;
 }
 
