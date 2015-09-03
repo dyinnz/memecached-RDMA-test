@@ -537,25 +537,6 @@ test_split_memory(struct thread_context *ctx) {
 }
 
 /***************************************************************************//**
- * thread run
- *
- ******************************************************************************/
-void *
-thread_run(void *arg) {
-    int thread_id = (int)arg;
-    struct thread_context *ctx = init_rdma_thread_resources();
-    if (!ctx) {
-        return NULL;
-    }
-
-    ctx->thread_id = thread_id;
-    //test_with_regmem(ctx);
-    //test_large_memory(ctx);
-    test_split_memory(ctx);
-    return NULL;
-}
-
-/***************************************************************************//**
  *  
  ******************************************************************************/
 #define LARGE_SIZE 100000
@@ -578,6 +559,42 @@ test_send_read_request(struct rdma_conn *c) {
     send_mr(c->id, head_mr);
     recv_msg(c);
 }
+
+void
+test_rdma_read(struct thread_context *ctx) {
+    struct rdma_conn *c = NULL;
+    struct timespec start,
+                    finish;
+    int i = 0;
+
+    clock_gettime(CLOCK_REALTIME, &start);
+    if ( !(c = build_connection(ctx)) ) {
+        return;
+    }
+
+    test_send_read_request(c);
+}
+
+/***************************************************************************//**
+ * thread run
+ *
+ ******************************************************************************/
+void *
+thread_run(void *arg) {
+    int thread_id = (int)arg;
+    struct thread_context *ctx = init_rdma_thread_resources();
+    if (!ctx) {
+        return NULL;
+    }
+
+    ctx->thread_id = thread_id;
+    //test_with_regmem(ctx);
+    //test_large_memory(ctx);
+    //test_split_memory(ctx);
+    test_rdma_read(ctx);
+    return NULL;
+}
+
 
 /***************************************************************************//**
  * main
