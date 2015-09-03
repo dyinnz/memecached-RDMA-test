@@ -126,7 +126,10 @@ struct ibv_mr   *delete_reply_mr = NULL;
  ******************************************************************************/
 static struct thread_context*
 init_rdma_thread_resources() {
+
     struct thread_context *ctx = calloc(1, sizeof(struct thread_context));
+
+    ctx->qp_hash = hashtable_create(1024);
 
     int num_device;
     if ( !(ctx->device_ctx_list = rdma_get_devices(&num_device)) ) {
@@ -140,6 +143,11 @@ init_rdma_thread_resources() {
 
     if ( !(ctx->pd = ibv_alloc_pd(ctx->device_ctx)) ) {
         perror("ibv_alloc_pd()");
+        return NULL;
+    }
+
+    if ( !(ctx->comp_channel = ibv_create_comp_channel(ctx->device_ctx)) ) {
+        perror("ibv_create_comp_channel()");
         return NULL;
     }
 
@@ -368,6 +376,7 @@ handle_work_complete(struct ibv_wc *wc, struct rdma_conn *c) {
 
     if (IBV_WC_RECV & wc->opcode) {
         c->handle_recv(wc, c);
+        return;
     }
 
     switch (wc->opcode) {
@@ -397,6 +406,11 @@ struct test_regmem_context {
 };
 
 void handle_recv_regmem(struct ibv_wc *wc, struct rdma_conn *c) {
+    if (c->total_recv == request_number) {
+        exit(0);
+        return;
+    }
+
     struct ibv_mr *mr = (struct ibv_mr*)(uintptr_t)wc->wr_id;
     struct test_regmem_context *regmem_ctx = c->context;
 
@@ -414,6 +428,11 @@ void handle_recv_regmem(struct ibv_wc *wc, struct rdma_conn *c) {
     }
 
     send_mr(c->id, regmem_ctx->mr[regmem_ctx->index]);
+
+    c->total_recv += 1;
+    if (c->total_recv % 10000 == 0) {
+        fprintf(stderr, "RECV, length: %d:\n%s\n", wc->byte_len, (char*)mr->addr);
+    }
 }
 
 void handle_send_regmem(struct ibv_wc *wc, struct rdma_conn *c) {
@@ -435,6 +454,8 @@ test_with_regmem(struct thread_context *ctx) {
 
     struct test_regmem_context *regmem_ctx = calloc(1, sizeof(struct test_regmem_context));
     c->context = regmem_ctx;
+    c->handle_recv = handle_recv_regmem;
+    c->handle_send = handle_send_regmem;
 
     regmem_ctx->mr[0] = rdma_reg_msgs(c->id, add_reply, sizeof(add_reply));
     regmem_ctx->mr[1] = rdma_reg_msgs(c->id, set_reply, sizeof(set_reply));
@@ -443,7 +464,8 @@ test_with_regmem(struct thread_context *ctx) {
     regmem_ctx->mr[4] = rdma_reg_msgs(c->id, prepend_reply, sizeof(prepend_reply));
     regmem_ctx->mr[5] = rdma_reg_msgs(c->id, incr_reply, sizeof(incr_reply));
     regmem_ctx->mr[6] = rdma_reg_msgs(c->id, decr_reply, sizeof(decr_reply));
-    regmem_ctx->mr[7] = rdma_reg_msgs(c->id, get_reply, sizeof(get_reply));
+    //regmem_ctx->mr[7] = rdma_reg_msgs(c->id, get_reply, sizeof(get_reply));
+    regmem_ctx->mr[7] = rdma_reg_msgs(c->id, decr_reply, sizeof(decr_reply));
     regmem_ctx->mr[8] = rdma_reg_msgs(c->id, delete_reply, sizeof(delete_reply));
     
     send_mr(c->id, regmem_ctx->mr[0]);
@@ -464,7 +486,7 @@ thread_run(void *arg) {
     if (!ctx) {
         return NULL;
     }
-    ctx->thread_id = *(int*)arg;
+    ctx->thread_id = *((int*)arg);
     free(arg);
 
     test_with_regmem(ctx);
@@ -522,7 +544,9 @@ main(int argc, char *argv[]) {
 
     if (1 == thread_number) {
         /* use main thread by default */
-        thread_run(NULL);
+        int *thread_id = malloc(sizeof(int));
+        *thread_id = 0;
+        thread_run(thread_id);
 
     } else {
         int i = 0;

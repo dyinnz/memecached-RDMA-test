@@ -350,8 +350,8 @@ test_with_regmem(struct thread_context *ctx) {
         recv_msg(c);
         send_mr(c->id, decr_reply_mr);
         recv_msg(c);
-        send_mr(c->id, get_reply_mr);
-        recv_msg(c);
+        //send_mr(c->id, get_reply_mr);
+        //recv_msg(c);
         send_mr(c->id, delete_reply_mr);
         recv_msg(c);
     }
@@ -588,10 +588,10 @@ thread_run(void *arg) {
     }
 
     ctx->thread_id = thread_id;
-    //test_with_regmem(ctx);
+    test_with_regmem(ctx);
     //test_large_memory(ctx);
     //test_split_memory(ctx);
-    test_rdma_read(ctx);
+    //test_rdma_read(ctx);
     return NULL;
 }
 

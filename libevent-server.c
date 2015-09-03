@@ -327,6 +327,9 @@ handle_work_complete(struct ibv_wc *wc) {
         if (c->total_recv % 1000 == 0) {
             printf("server has received %d : %s\n", c->total_recv, (char*)mr->addr);
         }
+        if (verbose) {
+            printf("server has received %d : %s\n", c->total_recv, (char*)mr->addr);
+        }
         if (0 != rdma_post_recv(c->id, (void *)(uintptr_t)wc->wr_id, mr->addr, mr->length, mr)) {
             perror("rdma_post_recv()");
             return;
