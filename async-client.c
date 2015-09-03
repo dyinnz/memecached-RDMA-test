@@ -49,10 +49,14 @@ struct thread_context {
 struct rdma_conn {
     struct rdma_cm_id   *id;
 
+    size_t  total_recv;
+
     void (*handle_recv) (struct ibv_wc*, struct rdma_conn*);
     void (*handle_send) (struct ibv_wc*, struct rdma_conn*);
     void (*handle_read) (struct ibv_wc*, struct rdma_conn*);
     void (*handle_write) (struct ibv_wc*, struct rdma_conn*);
+
+    void *context;
 };
 
 /***************************************************************************//**
@@ -63,20 +67,13 @@ void * thread_run(void *arg);
 void cc_poll_event_handler(int fd, short libevent_event, void *arg);
 
 static struct thread_context* init_rdma_thread_resources();
+static int init_and_dispatch_event(struct thread_context *ctx);
 static struct rdma_conn* build_connection(struct thread_context *ctx);
 static void handle_work_complete(struct ibv_wc *wc, struct rdma_conn *c);
 
 static int send_mr(struct rdma_cm_id *id, struct ibv_mr *mr);
-static int recv_msg(struct rdma_conn *c) {
-    return 0;
-}
 
 static void test_with_regmem(struct thread_context *ctx);
-static void test_max_conns(struct thread_context *ctx);
-static void split_and_send_large_memory(struct rdma_conn *c, char *mem, size_t length);
-static char * recv_split_msgs(struct rdma_conn *c, size_t size, size_t *getlen);
-static void test_split_memory(struct thread_context *ctx);
-void test_send_read_request(struct rdma_conn *c);
 
 /***************************************************************************//**
  * Testing parameters
@@ -99,14 +96,6 @@ static size_t   ack_events = 16;
  * Testing message
  *
  ******************************************************************************/
-static char add_noreply[] = "add foo 0 0 1 noreply\r\n1\r\n";
-static char set_noreply[] = "set foo 0 0 1 noreply\r\n1\r\n";
-static char replace_noreply[] = "replace foo 0 0 1 noreply\r\n1\r\n";
-static char append_noreply[] = "append foo 0 0 1 noreply\r\n1\r\n";
-static char prepend_noreply[] = "prepend foo 0 0 1 noreply\r\n1\r\n";
-static char incr_noreply[] = "incr foo 1 noreply\r\n";
-static char decr_noreply[] = "decr foo 1 noreply\r\n";
-static char delete_noreply[] = "delete foo noreply\r\n";
 
 static char add_reply[] = "add foo 0 0 1\r\n1\r\n";
 static char set_reply[] = "set foo 0 0 1\r\n1\r\n";
@@ -118,6 +107,17 @@ static char decr_reply[] = "decr foo 1\r\n";
 static char get_reply[] = "get foo\r\n";
 static char delete_reply[] = "delete foo\r\n";
 
+/*
+struct ibv_mr   *add_reply_mr = NULL;
+struct ibv_mr   *set_reply_mr = NULL;
+struct ibv_mr   *replace_reply_mr = NULL;
+struct ibv_mr   *append_reply_mr = NULL;
+struct ibv_mr   *prepend_reply_mr = NULL;
+struct ibv_mr   *incr_reply_mr = NULL;
+struct ibv_mr   *decr_reply_mr = NULL;
+struct ibv_mr   *get_reply_mr = NULL;
+struct ibv_mr   *delete_reply_mr = NULL;
+*/
 
 /***************************************************************************//**
  * Description 
@@ -176,15 +176,6 @@ init_rdma_thread_resources() {
         return NULL;
     }
 
-    event_set(&ctx->poll_event, ctx->comp_channel->fd, EV_READ | EV_PERSIST,
-            cc_poll_event_handler, ctx);
-    event_base_set(ctx->base, &ctx->poll_event);
-
-    if (event_add(&ctx->poll_event, 0) == -1) {
-        perror("event_add()");
-        return NULL;
-    }
-
     ctx->rsize = BUFF_SIZE;
     ctx->rbuf_list = calloc(buff_per_thread, sizeof(char *));
     ctx->rmr_list = calloc(buff_per_thread, sizeof(struct ibv_mr*));
@@ -232,6 +223,24 @@ init_rdma_thread_resources() {
     }
 
     return ctx;
+}
+
+/***************************************************************************//**
+ *  
+ ******************************************************************************/
+static int init_and_dispatch_event(struct thread_context *ctx) {
+    ctx->base = event_base_new();
+    event_set(&ctx->poll_event, ctx->comp_channel->fd, EV_READ | EV_PERSIST,
+            cc_poll_event_handler, ctx);
+    event_base_set(ctx->base, &ctx->poll_event);
+
+    if (event_add(&ctx->poll_event, 0) == -1) {
+        perror("event_add()");
+        return -1;
+    }
+    event_base_dispatch(ctx->base);
+
+    return 0;
 }
 
 /***************************************************************************//**
@@ -289,6 +298,11 @@ build_connection(struct thread_context *ctx) {
     c->id->recv_cq = ctx->recv_cq;
     c->id->send_cq = ctx->send_cq;
     c->id->srq = ctx->srq;
+
+    if (0 != hashtable_insert(ctx->qp_hash, c->id->qp->qp_num, c)) {
+        fprintf(stderr, "hashtable insert error!\n");
+        return NULL;
+    }
 
     return c;
 }
@@ -373,21 +387,90 @@ handle_work_complete(struct ibv_wc *wc, struct rdma_conn *c) {
 }
 
 /***************************************************************************//**
+ * Test with regmem
+ *
+ ******************************************************************************/
+
+struct test_regmem_context {
+    struct ibv_mr *mr[9];
+    size_t  index;
+};
+
+void handle_recv_regmem(struct ibv_wc *wc, struct rdma_conn *c) {
+    struct ibv_mr *mr = (struct ibv_mr*)(uintptr_t)wc->wr_id;
+    struct test_regmem_context *regmem_ctx = c->context;
+
+    if (verbose) {
+        fprintf(stderr, "RECV, length: %d:\n%s\n", wc->byte_len, (char*)mr->addr);
+    }
+
+    if ( ++(regmem_ctx->index) == 9) {
+        regmem_ctx->index = 0;
+    }
+
+    if (0 != rdma_post_recv(c->id, mr, mr->addr, mr->length, mr)) {
+        perror("rdma_post_recv()");
+        return;
+    }
+
+    send_mr(c->id, regmem_ctx->mr[regmem_ctx->index]);
+}
+
+void handle_send_regmem(struct ibv_wc *wc, struct rdma_conn *c) {
+    struct ibv_mr *mr = (struct ibv_mr*)(uintptr_t)wc->wr_id;
+    if (verbose) {
+        fprintf(stderr, "SEND, length: %d:\n%s\n", mr->length, (char*)mr->addr);
+    }
+}
+
+static void 
+test_with_regmem(struct thread_context *ctx) {
+    struct rdma_conn *c = NULL;
+    struct timespec start, finish;
+
+    clock_gettime(CLOCK_REALTIME, &start);
+    if ( !(c = build_connection(ctx)) ) {
+        return;
+    }
+
+    struct test_regmem_context *regmem_ctx = calloc(1, sizeof(struct test_regmem_context));
+    c->context = regmem_ctx;
+
+    regmem_ctx->mr[0] = rdma_reg_msgs(c->id, add_reply, sizeof(add_reply));
+    regmem_ctx->mr[1] = rdma_reg_msgs(c->id, set_reply, sizeof(set_reply));
+    regmem_ctx->mr[2] = rdma_reg_msgs(c->id, replace_reply, sizeof(replace_reply));
+    regmem_ctx->mr[3] = rdma_reg_msgs(c->id, append_reply, sizeof(append_reply));
+    regmem_ctx->mr[4] = rdma_reg_msgs(c->id, prepend_reply, sizeof(prepend_reply));
+    regmem_ctx->mr[5] = rdma_reg_msgs(c->id, incr_reply, sizeof(incr_reply));
+    regmem_ctx->mr[6] = rdma_reg_msgs(c->id, decr_reply, sizeof(decr_reply));
+    regmem_ctx->mr[7] = rdma_reg_msgs(c->id, get_reply, sizeof(get_reply));
+    regmem_ctx->mr[8] = rdma_reg_msgs(c->id, delete_reply, sizeof(delete_reply));
+    
+    send_mr(c->id, regmem_ctx->mr[0]);
+
+    init_and_dispatch_event(ctx);
+
+    clock_gettime(CLOCK_REALTIME, &finish);
+}
+
+/***************************************************************************//**
  * thread run
  *
  ******************************************************************************/
 void *
 thread_run(void *arg) {
-    int thread_id = (int)arg;
+
     struct thread_context *ctx = init_rdma_thread_resources();
     if (!ctx) {
         return NULL;
     }
+    ctx->thread_id = *(int*)arg;
+    free(arg);
 
-    ctx->thread_id = thread_id;
+    test_with_regmem(ctx);
+
     return NULL;
 }
-
 
 /***************************************************************************//**
  * main
@@ -446,7 +529,9 @@ main(int argc, char *argv[]) {
         for (i = 0; i < thread_number; ++i) {
             printf("Thread %d\n begin\n", i);
 
-            if (0 != pthread_create(threads+i, NULL, thread_run, (void*)i)) {
+            int *thread_id = malloc(sizeof(int));
+            *thread_id = i;
+            if (0 != pthread_create(threads+i, NULL, thread_run, thread_id)) {
                 return -1;
             }
         }
