@@ -7,17 +7,17 @@
 #pragma once
 
 /* the item in hash table */
-typedef struct hash_item_t {
-    struct hash_item_t *next;
+typedef struct hash_item_s {
+    struct hash_item_s *next;
     int32_t key;
     void *p;
-} hash_item_s;
+} hash_item_t;
 
 /* the struct of hash table */
-typedef struct hashtable_t {
+typedef struct hashtable_s {
     size_t size;
-    hash_item_s *T;
-} hashtable_s;
+    hash_item_t *T;
+} hashtable_t;
 
 /***************************************************************************//**
  * Create a empty hashtable
@@ -26,7 +26,7 @@ typedef struct hashtable_t {
  * @return          the pointer to hashtable
  *
  ******************************************************************************/
-hashtable_s* hashtable_create(size_t size);
+hashtable_t* hashtable_create(size_t size);
 
 /***************************************************************************//**
  * Calculate the hash value for a given key
@@ -36,7 +36,7 @@ hashtable_s* hashtable_create(size_t size);
  * @return          the index in the array of hash table 
  *
  ******************************************************************************/
-size_t calc_hash(hashtable_s *h, int32_t key);
+size_t calc_hash(hashtable_t *h, int32_t key);
 
 /***************************************************************************//**
  * Free the hashtable 
@@ -44,7 +44,7 @@ size_t calc_hash(hashtable_s *h, int32_t key);
  * @param[in] h     the pointer to hashtable
  *
  ******************************************************************************/
-void hashtable_free(hashtable_s *h);
+void hashtable_free(hashtable_t *h);
 
 /***************************************************************************//**
  * Insert a key and a void pointer to hash table, allowing duplicate key.
@@ -55,7 +55,7 @@ void hashtable_free(hashtable_s *h);
  * @return          0 on success, -1 on failure
  *
  ******************************************************************************/
-int hashtable_insert(hashtable_s *h, int32_t key, void *p);
+int hashtable_insert(hashtable_t *h, int32_t key, void *p);
 
 /***************************************************************************//**
  * Search a item in hashtable 
@@ -65,7 +65,7 @@ int hashtable_insert(hashtable_s *h, int32_t key, void *p);
  * @return          the void pointer store in hashtable
  *
  ******************************************************************************/
-void *hashtable_search(hashtable_s *h, int32_t key);
+void *hashtable_search(hashtable_t *h, int32_t key);
 
 
 /***************************************************************************//**
@@ -75,5 +75,5 @@ void *hashtable_search(hashtable_s *h, int32_t key);
  * @param[in] key   the key to dentify the item
  *
  ******************************************************************************/
-void hashtable_delete(hashtable_s *h, int32_t key);
+void hashtable_delete(hashtable_t *h, int32_t key);
 

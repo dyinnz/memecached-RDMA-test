@@ -33,7 +33,7 @@ struct thread_context {
     struct event_base           *base;
     struct event                poll_event;
 
-    hashtable_s                 *qp_hash;
+    hashtable_t                 *qp_hash;
 
     size_t                      rsize;
     size_t                      buff_list_size;     
