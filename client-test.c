@@ -555,7 +555,7 @@ test_send_read_request(struct rdma_conn *c) {
     struct ibv_mr *head_mr = rdma_reg_msgs(c->id, head_buff, HEAD_SIZE);
     struct ibv_mr *large_mr = rdma_reg_read(c->id, large_buff, LARGE_SIZE);
 
-    snprintf(head_buff, HEAD_SIZE, "%c %llu %u %zu\n",'\x88', (uint64_t)(uintptr_t)large_mr->addr, large_mr->rkey, large_mr->length);
+    snprintf(head_buff, HEAD_SIZE, "%c %lu %u %zu\n",'\x88', (uint64_t)(uintptr_t)large_mr->addr, large_mr->rkey, large_mr->length);
     send_mr(c->id, head_mr);
     recv_msg(c);
 }
