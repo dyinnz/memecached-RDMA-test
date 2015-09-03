@@ -1,19 +1,9 @@
+
 #include <stdio.h>
 #include <stdlib.h>
+#include "hashtable.h"
 
-typedef struct hash_item_t {
-    struct hash_item_t *next;
-
-    int32_t key;
-    void *p;
-} hash_item_s;
-
-typedef struct hashtable_t {
-
-    size_t          size;
-    hash_item_s     *T;
-
-} hashtable_s;
+/*******************************************************************************/
 
 size_t calc_hash(hashtable_s *h, int32_t key) {
     return key % h->size;
@@ -44,8 +34,8 @@ hashtable_s* hashtable_create(size_t size) {
 
     h->size = size;
     h->T = calloc(h->size, sizeof(hash_item_s));
-    printf("T: %p\n", h->T);
     if (!h->T) {
+        free(h);
         fprintf(stderr, "out of memory in hashtable_create()\n");
         return NULL;
     }
@@ -140,35 +130,4 @@ void hashtable_delete(hashtable_s *h, int32_t key) {
             iter = iter->next;
         }
     }
-}
-
-int main() {
-    hashtable_s *h = hashtable_create(1024);
-    int i = 0;
-    for (i = 1; i < 20; ++i) {
-        hashtable_insert(h, i, (void*)i);
-    }
-
-    for (i = 1; i < 20; ++i) {
-        printf("%d\n", (int)hashtable_search(h, i));
-    }
-
-    for (i = 3; i < 15; i+=3) {
-        hashtable_delete(h, i);
-    }
-
-    for (i = 1; i < 20; ++i) {
-        printf("%d\n", (int)hashtable_search(h, i));
-    }
-
-    for (i = 3; i < 15; i+=3) {
-        hashtable_insert(h, i, (void*)i);
-    }
-    for (i = 1; i < 20; ++i) {
-        printf("%d\n", (int)hashtable_search(h, i));
-    }
-
-    hashtable_free(h);
-
-    return 0;
 }

@@ -392,6 +392,7 @@ handle_rdma_read_request(struct rdma_conn *c, const char *head) {
     uint64_t addr = 0;
     uint32_t rkey = 0;
     uint32_t length = 0;
+    printf("HEAD: %s\n", head);
     sscanf(head+2, "%llu %u %u\n", &addr, &rkey, &length);
 
     char *buff = malloc(length);
@@ -403,6 +404,8 @@ handle_rdma_read_request(struct rdma_conn *c, const char *head) {
         perror("rdma_post_read()");
         return;
     }
+
+    printf("Post read ok\n");
 }
 
 /***************************************************************************//**
