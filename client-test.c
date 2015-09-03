@@ -427,7 +427,8 @@ test_max_conns(struct thread_context *ctx) {
 }
 
 /***************************************************************************//**
- *  
+ * split and send large momery
+ *
  ******************************************************************************/
 #define SPLIT_SIZE 16384
 static char split_add_reply[32768] = "add foo 0 0 20000\r\n???";
@@ -453,6 +454,54 @@ split_and_send_large_memory(struct rdma_conn *c, char *mem, size_t length) {
     }
 }
 
+/***************************************************************************//**
+ * recv split messages
+ *
+ ******************************************************************************/
+static char *
+recv_split_msgs(struct rdma_conn *c, size_t size, size_t *getlen) {
+    size_t buff_num = (float)size / SPLIT_SIZE + 0.5;
+    char *buff = malloc(buff_num * size);
+    char *curr = buff;
+
+    struct ibv_wc wc;
+    int cqe = 0;
+    int i = 0;
+
+    for (i = 0; i < buff_num; ++i) {
+        do {
+            cqe = ibv_poll_cq(c->id->recv_cq, 1, &wc);
+        } while (cqe == 0);
+
+        if (cqe < 0) {
+            free(buff);
+            *getlen = 0;
+            return NULL;
+        }
+
+        struct wr_context *wr_ctx = (struct wr_context*)(uintptr_t)wc.wr_id;
+        struct ibv_mr *mr = wr_ctx->mr;
+
+        if (verbose) {
+            printf("CLIENT RECV, length %d:\n%s\n", wc.byte_len, (char*)mr->addr);
+        }
+        
+        memcpy(curr, mr->addr, wc.byte_len);
+        curr += wc.byte_len;
+
+        if (wc.byte_len >= 5 && 0 == strncmp(mr->addr + wc.byte_len - 5, "END\r\n", 5)) {
+            break;
+        }
+    }
+    
+    *getlen += curr - buff;
+    return buff;
+}
+
+/***************************************************************************//**
+ * testing
+ *
+ ******************************************************************************/
 static void
 test_split_memory(struct thread_context *ctx) {
     struct rdma_conn *c = NULL;
@@ -465,6 +514,7 @@ test_split_memory(struct thread_context *ctx) {
         return;
     }
 
+    struct ibv_mr   *get_reply_mr = rdma_reg_msgs(c->id, get_reply, sizeof(get_reply));
     struct ibv_mr   *delete_reply_mr = rdma_reg_msgs(c->id, delete_reply, sizeof(delete_reply));
 
     printf("[%d] split, noreply:\n", ctx->thread_id);
@@ -474,6 +524,9 @@ test_split_memory(struct thread_context *ctx) {
     for (i = 0; i < request_number; ++i) {
         split_and_send_large_memory(c, split_add_reply, 32768);
         recv_msg(c);
+        send_mr(c->id, get_reply_mr);
+        size_t len = 0;
+        recv_split_msgs(c, 32768, &len);
         send_mr(c->id, delete_reply_mr);
         recv_msg(c);
     }
@@ -482,7 +535,6 @@ test_split_memory(struct thread_context *ctx) {
     printf("[%d] Cost time: %lf secs\n", ctx->thread_id, 
         (double)(finish.tv_sec-start.tv_sec + (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
 }
-
 /***************************************************************************//**
  * thread run
  *
