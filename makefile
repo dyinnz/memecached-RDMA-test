@@ -13,3 +13,6 @@ async-client: async-client.c hashtable.c
 	gcc hashtable.c ${CFLAGS} -c
 	gcc async-client.c ${CFLAGS} ${LDFLAGS} -c
 	gcc async-client.o hashtable.o -o asyn-client ${CFLAGS} ${LDFLAGS}
+
+clean:
+	rm *.o
