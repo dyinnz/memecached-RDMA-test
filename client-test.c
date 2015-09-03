@@ -535,6 +535,7 @@ test_split_memory(struct thread_context *ctx) {
     printf("[%d] Cost time: %lf secs\n", ctx->thread_id, 
         (double)(finish.tv_sec-start.tv_sec + (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
 }
+
 /***************************************************************************//**
  * thread run
  *
@@ -552,6 +553,30 @@ thread_run(void *arg) {
     //test_large_memory(ctx);
     test_split_memory(ctx);
     return NULL;
+}
+
+/***************************************************************************//**
+ *  
+ ******************************************************************************/
+#define LARGE_SIZE 100000
+#define HEAD_SIZE 32
+static char large_buff[LARGE_SIZE] = "this is large buff\n";
+static char head_buff[HEAD_SIZE];
+
+void
+test_send_read_request(struct rdma_conn *c) {
+    /* test normal buff */
+    struct ibv_mr   *add_reply_mr = rdma_reg_msgs(c->id, add_reply, sizeof(add_reply));
+    send_mr(c->id, add_reply_mr);
+    recv_msg(c);
+
+    /* test large buff */
+    struct ibv_mr *head_mr = rdma_reg_msgs(c->id, head_buff, HEAD_SIZE);
+    struct ibv_mr *large_mr = rdma_reg_read(c->id, large_buff, LARGE_SIZE);
+
+    snprintf(head_buff, HEAD_SIZE, "%c %llu %u %zu\n",'\x88', (uint64_t)(uintptr_t)large_mr->addr, large_mr->rkey, large_mr->length);
+    send_mr(c->id, head_mr);
+    recv_msg(c);
 }
 
 /***************************************************************************//**

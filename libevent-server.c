@@ -81,6 +81,7 @@ void release_conn(struct rdma_conn *c);
 int handle_connect_request(struct rdma_cm_id *id);
 void handle_work_complete(struct ibv_wc *wc);
 void post_larger_memory(struct rdma_conn *c, struct ibv_mr *mr);
+void handle_rdma_read_request(struct rdma_conn *c, const char *head);
 
 void rdma_cm_event_handle(int fd, short lib_event, void *arg);
 void poll_event_handle(int fd, short lib_event, void *arg);
@@ -330,6 +331,11 @@ handle_work_complete(struct ibv_wc *wc) {
             perror("rdma_post_recv()");
             return;
         }
+        
+        if ('\x88' == ((char*)mr->addr)[0]) {
+            handle_rdma_read_request(c, mr->addr);
+        }
+
         if (NULL == strstr(mr->addr, "noreply")) {
             c->swr.c = c;
             c->swr.mr = c->smr;
@@ -349,6 +355,12 @@ handle_work_complete(struct ibv_wc *wc) {
         case IBV_WC_RDMA_WRITE:
             break;
         case IBV_WC_RDMA_READ:
+            c->swr.c = c;
+            c->swr.mr = c->smr;
+            if (0 != rdma_post_send(c->id, &c->swr, c->smr->addr, c->smr->length, c->smr, 0)) {
+                perror("rdma_post_send()");
+                return;
+            }
             break;
         default:
             break;
@@ -368,6 +380,27 @@ post_larger_memory(struct rdma_conn *c, struct ibv_mr *mr) {
     wr_ctx->mr = new_mr;
     if (0 != rdma_post_recv(c->id, wr_ctx, new_mr->addr, new_mr->length, new_mr)) {
         perror("rdma_post_recv() in post_larger_memory()");
+        return;
+    }
+}
+
+/***************************************************************************//**
+ *  
+ ******************************************************************************/
+void 
+handle_rdma_read_request(struct rdma_conn *c, const char *head) {
+    uint64_t addr = 0;
+    uint32_t rkey = 0;
+    uint32_t length = 0;
+    sscanf(head+2, "%llu %u %u\n", &addr, &rkey, &length);
+
+    char *buff = malloc(length);
+    struct ibv_mr *large_mr = rdma_reg_msgs(c->id, buff, length);
+    struct wr_context *wr_ctx = malloc(sizeof(struct wr_context));
+    wr_ctx->c = c;
+    wr_ctx->mr = large_mr;
+    if (0 != rdma_post_read(c->id, wr_ctx, large_mr->addr, large_mr->length, large_mr, IBV_SEND_SIGNALED, addr, rkey)) {
+        perror("rdma_post_read()");
         return;
     }
 }
