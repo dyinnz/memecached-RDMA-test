@@ -9,6 +9,8 @@
 #include <rdma/rdma_cma.h>
 #include <rdma/rdma_verbs.h>
 
+#define HEAD_READ '\x88'
+#define HEAD_RWITE 'x99'
 #define BUFF_SIZE 4096
 
 /***************************************************************************//**
@@ -541,11 +543,11 @@ test_split_memory(struct thread_context *ctx) {
  ******************************************************************************/
 #define LARGE_SIZE 100000
 #define HEAD_SIZE 32
-static char large_buff[LARGE_SIZE] = "this is large buff\n";
+static char large_buff[LARGE_SIZE];
 static char head_buff[HEAD_SIZE];
 
 void
-test_send_read_request(struct rdma_conn *c) {
+test_rdma_read_request(struct rdma_conn *c) {
     /* test normal buff */
     struct ibv_mr   *add_reply_mr = rdma_reg_msgs(c->id, add_reply, sizeof(add_reply));
     send_mr(c->id, add_reply_mr);
@@ -555,9 +557,38 @@ test_send_read_request(struct rdma_conn *c) {
     struct ibv_mr *head_mr = rdma_reg_msgs(c->id, head_buff, HEAD_SIZE);
     struct ibv_mr *large_mr = rdma_reg_read(c->id, large_buff, LARGE_SIZE);
 
-    snprintf(head_buff, HEAD_SIZE, "%c %lu %u %zu\n",'\x88', (uint64_t)(uintptr_t)large_mr->addr, large_mr->rkey, large_mr->length);
+    snprintf(head_buff, HEAD_SIZE, "%c %lu %u %zu\nadd foo 0 0 50000\r\n",
+            '\x88', (uint64_t)(uintptr_t)large_mr->addr, large_mr->rkey, large_mr->length);
+    snprintf(large_buff, LARGE_SIZE, "hello world!");
+    large_buff[50000] = '\r';
+    large_buff[50001] = '\n';
+
     send_mr(c->id, head_mr);
     recv_msg(c);
+}
+
+void
+test_rdma_write_request(struct rdma_conn *c) {
+    /* test normal buff */
+    struct ibv_mr   *add_reply_mr = rdma_reg_msgs(c->id, add_reply, sizeof(add_reply));
+    send_mr(c->id, add_reply_mr);
+    recv_msg(c);
+
+    /* test large buff */
+    struct ibv_mr *head_mr = rdma_reg_msgs(c->id, head_buff, HEAD_SIZE);
+    struct ibv_mr *large_mr = rdma_reg_write(c->id, large_buff, LARGE_SIZE);
+    memset(large_mr, 0, LARGE_SIZE);
+
+    snprintf(head_buff, HEAD_SIZE, "%c %lu %u %u\n",
+            '\x88', (uint64_t)(uintptr_t)large_mr->addr, large_mr->rkey, large_mr->length);
+    send_mr(c->id, head_mr);
+    recv_msg(c);
+
+    if (NULL != strstr(large_buff, "\r\n")) {
+        fprintf(stderr, "the rdma-write operation OK!\n");
+    } else {
+        fprintf(stderr, "the rdma-write operation FAILED!\n");
+    }
 }
 
 void
@@ -572,7 +603,7 @@ test_rdma_read(struct thread_context *ctx) {
         return;
     }
 
-    test_send_read_request(c);
+    test_rdma_read_request(c);
 }
 
 /***************************************************************************//**
