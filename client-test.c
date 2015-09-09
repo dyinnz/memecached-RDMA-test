@@ -10,6 +10,8 @@
 #include <rdma/rdma_verbs.h>
 
 #define BUFF_SIZE 4096
+#define HEAD_READ '\x88'
+#define HEAD_WRITE '\x99'
 
 /***************************************************************************//**
  * Testing parameters
@@ -350,8 +352,8 @@ test_with_regmem(struct thread_context *ctx) {
         recv_msg(c);
         send_mr(c->id, decr_reply_mr);
         recv_msg(c);
-        //send_mr(c->id, get_reply_mr);
-        //recv_msg(c);
+        send_mr(c->id, get_reply_mr);
+        recv_msg(c);
         send_mr(c->id, delete_reply_mr);
         recv_msg(c);
     }
@@ -540,7 +542,7 @@ test_split_memory(struct thread_context *ctx) {
  *  
  ******************************************************************************/
 #define LARGE_SIZE 100000
-#define HEAD_SIZE 32
+#define HEAD_SIZE 128
 static char large_buff[LARGE_SIZE] = "this is large buff\n";
 static char head_buff[HEAD_SIZE];
 
@@ -555,7 +557,8 @@ test_send_read_request(struct rdma_conn *c) {
     struct ibv_mr *head_mr = rdma_reg_msgs(c->id, head_buff, HEAD_SIZE);
     struct ibv_mr *large_mr = rdma_reg_read(c->id, large_buff, LARGE_SIZE);
 
-    snprintf(head_buff, HEAD_SIZE, "%c %lu %u %zu\n",'\x88', (uint64_t)(uintptr_t)large_mr->addr, large_mr->rkey, large_mr->length);
+    snprintf(head_buff, HEAD_SIZE, "%c %lu %u %zu\nadd foo 0 0 1\r\n", HEAD_READ, (uint64_t)(uintptr_t)large_mr->addr, large_mr->rkey, large_mr->length);
+    snprintf(large_buff, LARGE_SIZE, "1\r\n");
     send_mr(c->id, head_mr);
     recv_msg(c);
 }
@@ -588,10 +591,10 @@ thread_run(void *arg) {
     }
 
     ctx->thread_id = thread_id;
-    test_with_regmem(ctx);
+    //test_with_regmem(ctx);
     //test_large_memory(ctx);
     //test_split_memory(ctx);
-    //test_rdma_read(ctx);
+    test_rdma_read(ctx);
     return NULL;
 }
 
