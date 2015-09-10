@@ -572,20 +572,37 @@ test_rdma_write_request(struct rdma_conn *c) {
     send_mr(c->id, add_reply_mr);
     recv_msg(c);
 
+    if (verbose) {
+        fprintf(stderr, "in write operation id: %d\n", c->id);
+    }
+
     /* test large buff */
     struct ibv_mr *head_mr = rdma_reg_msgs(c->id, head_buff, HEAD_SIZE);
+    if (!head_mr) {
+        perror("rdma_reg_msgs()");
+    }
     struct ibv_mr *large_mr = rdma_reg_write(c->id, large_buff, LARGE_SIZE);
-    memset(large_mr, 0, LARGE_SIZE);
+    if (!large_mr) {
+        perror("rdma_reg_msgs()");
+    }
+    memset(large_buff, 0, LARGE_SIZE);
 
-    snprintf(head_buff, HEAD_SIZE, "%c %lu %u %u\n",
+    snprintf(head_buff, HEAD_SIZE, "%c %lu %u %u\nget foo\r\n",
             '\x88', (uint64_t)(uintptr_t)large_mr->addr, large_mr->rkey, large_mr->length);
+
+    if (verbose) {
+        fprintf(stderr, "in write operation id: %d\n", c->id);
+    }
+
     send_mr(c->id, head_mr);
-    recv_msg(c);
+    if (0 != recv_msg(c)) {
+        fprintf(stderr, "recv ack msg failed!\n");
+    }
 
     if (NULL != strstr(large_buff, "\r\n")) {
-        fprintf(stderr, "the rdma-write operation OK!\n");
+        fprintf(stderr, "the rdma-write operation OK:\n%s\n", large_buff);
     } else {
-        fprintf(stderr, "the rdma-write operation FAILED!\n");
+        fprintf(stderr, "the rdma-write operation FAILED:\n%s\n", large_buff);
     }
 }
 
@@ -604,6 +621,25 @@ test_rdma_read(struct thread_context *ctx) {
     test_rdma_read_request(c);
 }
 
+void
+test_rdma_write(struct thread_context *ctx) {
+    struct rdma_conn *c = NULL;
+    struct timespec start,
+                    finish;
+    int i = 0;
+
+    clock_gettime(CLOCK_REALTIME, &start);
+    if ( !(c = build_connection(ctx)) ) {
+        return;
+    }
+
+    if (verbose) {
+        fprintf(stderr, "id: %d\n", c->id);
+    }
+
+    test_rdma_write_request(c);
+}
+
 /***************************************************************************//**
  * thread run
  *
@@ -620,7 +656,8 @@ thread_run(void *arg) {
     //test_with_regmem(ctx);
     //test_large_memory(ctx);
     //test_split_memory(ctx);
-    test_rdma_read(ctx);
+    //test_rdma_read(ctx);
+    test_rdma_write(ctx);
     return NULL;
 }
 
