@@ -455,6 +455,46 @@ test_rdma_write_request(struct rdma_conn *c) {
 }
 
 void
+test_rdma_read_write(struct rdma_conn *c) {
+    char read_head_buff[HEAD_SIZE];
+    char *read_large_buff = malloc(large_memory_size);
+
+    struct ibv_mr *read_head_mr = rdma_reg_msgs(c->id, read_head_buff, HEAD_SIZE);
+    struct ibv_mr *read_large_mr = rdma_reg_read(c->id, read_large_buff, large_memory_size);
+
+    snprintf(read_head_buff, HEAD_SIZE, "%c %lu %u %zu\nadd foo 0 0 %d\r\n", HEAD_READ, 
+            (uint64_t)(uintptr_t)read_large_mr->addr, read_large_mr->rkey, read_large_mr->length, large_memory_size-2);
+    //snprintf(large_buff, large_memory_size, "hello\r\n");
+    read_large_buff[large_memory_size-2] = '\r';
+    read_large_buff[large_memory_size-1] = '\n';
+
+    char write_head_buff[HEAD_SIZE];
+    char *write_large_buff = malloc(large_memory_size + 128);
+
+    struct ibv_mr *write_head_mr = rdma_reg_msgs(c->id, write_head_buff, HEAD_SIZE);
+    struct ibv_mr *write_large_mr = rdma_reg_write(c->id, write_large_buff, large_memory_size + 128);
+    memset(write_large_buff, 0, large_memory_size);
+
+    snprintf(write_head_buff, HEAD_SIZE, "%c %lu %u %u\nget foo\r\n",
+            '\x88', (uint64_t)(uintptr_t)write_large_mr->addr, write_large_mr->rkey, write_large_mr->length);
+
+    struct ibv_mr   *delete_reply_mr = rdma_reg_msgs(c->id, delete_reply, sizeof(delete_reply));
+
+    int i = 0;
+    for (i = 0; i < request_number; ++i) {
+        send_mr(c->id, read_head_mr);
+        recv_msg(c);
+
+        send_mr(c->id, write_head_mr);
+        recv_msg(c);
+
+        send_mr(c->id, delete_reply_mr);
+        recv_msg(c);
+    }
+
+}
+
+void
 test_rdma_read(struct thread_context *ctx) {
     struct rdma_conn *c = NULL;
     struct timespec start,
