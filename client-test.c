@@ -392,179 +392,58 @@ test_max_conns(struct thread_context *ctx) {
 }
 
 /***************************************************************************//**
- * split and send large momery
- *
- ******************************************************************************/
-#define SPLIT_SIZE 16384
-static char split_add_reply[32768] = "add foo 0 0 20000\r\n???";
-static char split_delete_reply[32768] = "delete foo\r\n";
-
-static void
-split_and_send_large_memory(struct rdma_conn *c, char *mem, size_t length) {
-    size_t rlen = length;
-    char *p = mem;
-
-    struct ibv_mr *mr = NULL;
-    size_t mem_len = 0;
-
-    while (rlen > 0) {
-        mem_len = rlen < SPLIT_SIZE ? rlen : SPLIT_SIZE;
-        mr = rdma_reg_msgs(c->id, p, mem_len);
-        rlen -= mem_len;
-
-        send_mr(c->id, mr);
-        rdma_dereg_mr(mr);
-        
-        p += mem_len;
-    }
-}
-
-/***************************************************************************//**
- * recv split messages
- *
- ******************************************************************************/
-static char *
-recv_split_msgs(struct rdma_conn *c, size_t size, size_t *getlen) {
-    size_t buff_num = (float)size / SPLIT_SIZE + 0.5;
-    char *buff = malloc(buff_num * size);
-    char *curr = buff;
-
-    struct ibv_wc wc;
-    int cqe = 0;
-    int i = 0;
-
-    for (i = 0; i < buff_num; ++i) {
-        do {
-            cqe = ibv_poll_cq(c->id->recv_cq, 1, &wc);
-        } while (cqe == 0);
-
-        if (cqe < 0) {
-            free(buff);
-            *getlen = 0;
-            return NULL;
-        }
-
-        struct wr_context *wr_ctx = (struct wr_context*)(uintptr_t)wc.wr_id;
-        struct ibv_mr *mr = wr_ctx->mr;
-
-        if (verbose) {
-            printf("CLIENT RECV, length %d:\n%s\n", wc.byte_len, (char*)mr->addr);
-        }
-        
-        memcpy(curr, mr->addr, wc.byte_len);
-        curr += wc.byte_len;
-
-        if (wc.byte_len >= 5 && 0 == strncmp(mr->addr + wc.byte_len - 5, "END\r\n", 5)) {
-            break;
-        }
-    }
-    
-    *getlen += curr - buff;
-    return buff;
-}
-
-/***************************************************************************//**
- * testing
- *
- ******************************************************************************/
-static void
-test_split_memory(struct thread_context *ctx) {
-    struct rdma_conn *c = NULL;
-    struct timespec start,
-                    finish;
-    int i = 0;
-
-    clock_gettime(CLOCK_REALTIME, &start);
-    if ( !(c = build_connection(ctx)) ) {
-        return;
-    }
-
-    struct ibv_mr   *get_reply_mr = rdma_reg_msgs(c->id, get_reply, sizeof(get_reply));
-    struct ibv_mr   *delete_reply_mr = rdma_reg_msgs(c->id, delete_reply, sizeof(delete_reply));
-
-    printf("[%d] split, noreply:\n", ctx->thread_id);
-
-    split_add_reply[20019] = '\r';
-    split_add_reply[20020] = '\n';
-    for (i = 0; i < request_number; ++i) {
-        split_and_send_large_memory(c, split_add_reply, 32768);
-        recv_msg(c);
-        send_mr(c->id, get_reply_mr);
-        size_t len = 0;
-        recv_split_msgs(c, 32768, &len);
-        send_mr(c->id, delete_reply_mr);
-        recv_msg(c);
-    }
-
-    clock_gettime(CLOCK_REALTIME, &finish);
-    printf("[%d] Cost time: %lf secs\n", ctx->thread_id, 
-        (double)(finish.tv_sec-start.tv_sec + (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
-}
-
-/***************************************************************************//**
  *  
  ******************************************************************************/
-#define LARGE_SIZE 100000
 #define HEAD_SIZE 128
-static char large_buff[LARGE_SIZE] = "this is large buff\n";
-static char head_buff[HEAD_SIZE];
 
 void
 test_rdma_read_request(struct rdma_conn *c) {
-    /* test normal buff */
-    struct ibv_mr   *add_reply_mr = rdma_reg_msgs(c->id, add_reply, sizeof(add_reply));
-    send_mr(c->id, add_reply_mr);
-    recv_msg(c);
-
     /* test large buff */
-    struct ibv_mr *head_mr = rdma_reg_msgs(c->id, head_buff, HEAD_SIZE);
-    struct ibv_mr *large_mr = rdma_reg_read(c->id, large_buff, LARGE_SIZE);
+    char head_buff[HEAD_SIZE];
+    char *large_buff = malloc(large_memory_size);
 
-    snprintf(head_buff, HEAD_SIZE, "%c %lu %u %zu\nadd foo 0 0 1\r\n", HEAD_READ, (uint64_t)(uintptr_t)large_mr->addr, large_mr->rkey, large_mr->length);
-    snprintf(large_buff, LARGE_SIZE, "1\r\n");
-    send_mr(c->id, head_mr);
-    recv_msg(c);
+    struct ibv_mr *head_mr = rdma_reg_msgs(c->id, head_buff, HEAD_SIZE);
+    struct ibv_mr *large_mr = rdma_reg_read(c->id, large_buff, large_memory_size);
+
+    snprintf(head_buff, HEAD_SIZE, "%c %lu %u %zu\nadd foo 0 0 1\r\n", HEAD_READ, 
+            (uint64_t)(uintptr_t)large_mr->addr, large_mr->rkey, large_mr->length);
+    snprintf(large_buff, large_memory_size, "1\r\n");
+
+    int i = 0;
+    for (i = 0; i < request_number; ++i) {
+        send_mr(c->id, head_mr);
+        recv_msg(c);
+    }
 }
 
 void
 test_rdma_write_request(struct rdma_conn *c) {
-    /* test normal buff */
-    struct ibv_mr   *add_reply_mr = rdma_reg_msgs(c->id, add_reply, sizeof(add_reply));
-    send_mr(c->id, add_reply_mr);
-    recv_msg(c);
-
-    if (verbose) {
-        fprintf(stderr, "in write operation id: %d\n", c->id);
-    }
-
     /* test large buff */
+    char head_buff[HEAD_SIZE];
+    char *large_buff = malloc(large_memory_size);
+
     struct ibv_mr *head_mr = rdma_reg_msgs(c->id, head_buff, HEAD_SIZE);
-    if (!head_mr) {
-        perror("rdma_reg_msgs()");
-    }
-    struct ibv_mr *large_mr = rdma_reg_write(c->id, large_buff, LARGE_SIZE);
-    if (!large_mr) {
-        perror("rdma_reg_msgs()");
-    }
-    memset(large_buff, 0, LARGE_SIZE);
+    struct ibv_mr *large_mr = rdma_reg_write(c->id, large_buff, large_memory_size);
+    memset(large_buff, 0, large_memory_size);
 
     snprintf(head_buff, HEAD_SIZE, "%c %lu %u %u\nget foo\r\n",
             '\x88', (uint64_t)(uintptr_t)large_mr->addr, large_mr->rkey, large_mr->length);
 
-    if (verbose) {
-        fprintf(stderr, "in write operation id: %d\n", c->id);
+    int i = 0; 
+    for (i = 0; i < request_number; ++i) {
+        send_mr(c->id, head_mr);
+        if (0 != recv_msg(c)) {
+            fprintf(stderr, "recv ack msg failed!\n");
+        }
     }
 
-    send_mr(c->id, head_mr);
-    if (0 != recv_msg(c)) {
-        fprintf(stderr, "recv ack msg failed!\n");
-    }
-
+    /*
     if (NULL != strstr(large_buff, "\r\n")) {
         fprintf(stderr, "the rdma-write operation OK:\n%s\n", large_buff);
     } else {
         fprintf(stderr, "the rdma-write operation FAILED:\n%s\n", large_buff);
     }
+    */
 }
 
 void
@@ -572,12 +451,17 @@ test_rdma_read(struct thread_context *ctx) {
     struct rdma_conn *c = NULL;
     struct timespec start,
                     finish;
+
     clock_gettime(CLOCK_REALTIME, &start);
     if ( !(c = build_connection(ctx)) ) {
         return;
     }
 
     test_rdma_read_request(c);
+
+    clock_gettime(CLOCK_REALTIME, &finish);
+    printf("[%d] Cost time: %lf secs\n", ctx->thread_id, 
+        (double)(finish.tv_sec-start.tv_sec + (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
 }
 
 void
@@ -585,18 +469,17 @@ test_rdma_write(struct thread_context *ctx) {
     struct rdma_conn *c = NULL;
     struct timespec start,
                     finish;
-    int i = 0;
 
     clock_gettime(CLOCK_REALTIME, &start);
     if ( !(c = build_connection(ctx)) ) {
         return;
     }
 
-    if (verbose) {
-        fprintf(stderr, "id: %d\n", c->id);
-    }
-
     test_rdma_write_request(c);
+
+    clock_gettime(CLOCK_REALTIME, &finish);
+    printf("[%d] Cost time: %lf secs\n", ctx->thread_id, 
+        (double)(finish.tv_sec-start.tv_sec + (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
 }
 
 /***************************************************************************//**
