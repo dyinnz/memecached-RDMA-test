@@ -27,6 +27,11 @@ static int      wr_size = 1024;
 static int      max_sge = 16;
 static int      buff_per_conn = 4;
 static int      poll_wc_size = 128;
+static int      large_memory_size = 16 * 1024;
+static int      test_get = 0;
+static int      test_read = 0;
+static int      test_write = 0;
+static int      test_conns = 0;
 
 /***************************************************************************//**
  * Testing message
@@ -352,55 +357,11 @@ test_with_regmem(struct thread_context *ctx) {
         recv_msg(c);
         send_mr(c->id, decr_reply_mr);
         recv_msg(c);
-        //send_mr(c->id, get_reply_mr);
-        //recv_msg(c);
+        if (test_get) {
+            send_mr(c->id, get_reply_mr);
+            recv_msg(c);
+        }
         send_mr(c->id, delete_reply_mr);
-        recv_msg(c);
-    }
-
-    clock_gettime(CLOCK_REALTIME, &finish);
-    printf("[%d] Cost time: %lf secs\n", ctx->thread_id, 
-            (double)(finish.tv_sec-start.tv_sec + (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
-}
-
-/***************************************************************************//**
- * Test large memory
- *
- ******************************************************************************/
-static char large_add_noreply[10240] = "add foo 0 0 1 noreply\r\n1\r\n";
-static char large_add_reply[10240] = "add foo 0 0 1\r\n1\r\n";
-
-static void 
-test_large_memory(struct thread_context *ctx) {
-    struct rdma_conn *c = NULL;
-    struct timespec start,
-                    finish;
-    int i = 0;
-
-    clock_gettime(CLOCK_REALTIME, &start);
-    if ( !(c = build_connection(ctx)) ) {
-        return;
-    }
-
-    printf("[%d] large, noreply:\n", ctx->thread_id);
-
-    struct ibv_mr *add_noreply_mr = rdma_reg_msgs(c->id, large_add_noreply, sizeof(large_add_noreply));
-    for (i = 0; i < request_number; ++i) {
-        send_mr(c->id, add_noreply_mr);
-    }
-
-    clock_gettime(CLOCK_REALTIME, &finish);
-    printf("[%d] Cost time: %lf secs\n", ctx->thread_id, 
-        (double)(finish.tv_sec-start.tv_sec + (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
-
-    return;
-
-    printf("[%d] reply:\n", ctx->thread_id);
-    clock_gettime(CLOCK_REALTIME, &start);
-
-    struct ibv_mr *add_reply_mr = rdma_reg_msgs(c->id, large_add_reply, sizeof(large_add_reply));
-    for (i = 0; i < request_number; ++i) {
-        send_mr(c->id, add_reply_mr);
         recv_msg(c);
     }
 
@@ -596,8 +557,6 @@ test_rdma_read(struct thread_context *ctx) {
     struct rdma_conn *c = NULL;
     struct timespec start,
                     finish;
-    int i = 0;
-
     clock_gettime(CLOCK_REALTIME, &start);
     if ( !(c = build_connection(ctx)) ) {
         return;
@@ -619,10 +578,15 @@ thread_run(void *arg) {
     }
 
     ctx->thread_id = thread_id;
-    test_with_regmem(ctx);
-    //test_large_memory(ctx);
-    //test_split_memory(ctx);
-    //test_rdma_read(ctx);
+    if (test_read) {
+        test_rdma_read(ctx);
+    } else if (test_write) {
+        test_rdma_write(ctx);
+    } else if (test_conns) {
+        test_rdma_conns(ctx);
+    } else {
+        test_with_regmem(ctx);
+    }
     return NULL;
 }
 
@@ -641,6 +605,8 @@ main(int argc, char *argv[]) {
             "s:"    /* server ip */
             "v"     /* verbose */
             "b:"
+            "T:"    /* testing type */
+            "m:"    /* the size of large memory */
     ))) {
         switch (c) {
             case 't':
@@ -663,6 +629,23 @@ main(int argc, char *argv[]) {
                 break;
             case 'w':
                 poll_wc_size = atoi(optarg);
+            case 'T':
+                if (0 == strcmp("test_get", optarg)) {
+                    test_get = 1;
+                } else if (0 == strcmp("test_read", optarg)) {
+                    test_read = 1;
+                } else if (0 == strcmp("test_write", optarg)) {
+                    test_write = 1;
+                } else if (0 == strcmp("test_conns", optarg)) {
+                    test_conns = 1;
+                } else {
+                    fprintf(stderr, "Wrong parameter!\n");
+                    return -1;
+                }
+                break;
+            case 'm':
+                large_memory_size = atoi(optarg);
+                break;
             default:
                 assert(0);
         }
