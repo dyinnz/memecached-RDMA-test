@@ -12,6 +12,8 @@
 #define HEAD_READ '\x88'
 #define HEAD_RWITE 'x99'
 #define BUFF_SIZE 4096
+#define HEAD_READ '\x88'
+#define HEAD_WRITE '\x99'
 
 /***************************************************************************//**
  * Testing parameters
@@ -503,8 +505,8 @@ test_split_memory(struct thread_context *ctx) {
  *  
  ******************************************************************************/
 #define LARGE_SIZE 100000
-#define HEAD_SIZE 32
-static char large_buff[LARGE_SIZE];
+#define HEAD_SIZE 128
+static char large_buff[LARGE_SIZE] = "this is large buff\n";
 static char head_buff[HEAD_SIZE];
 
 void
@@ -518,12 +520,8 @@ test_rdma_read_request(struct rdma_conn *c) {
     struct ibv_mr *head_mr = rdma_reg_msgs(c->id, head_buff, HEAD_SIZE);
     struct ibv_mr *large_mr = rdma_reg_read(c->id, large_buff, LARGE_SIZE);
 
-    snprintf(head_buff, HEAD_SIZE, "%c %lu %u %zu\nadd foo 0 0 50000\r\n",
-            '\x88', (uint64_t)(uintptr_t)large_mr->addr, large_mr->rkey, large_mr->length);
-    snprintf(large_buff, LARGE_SIZE, "hello world!");
-    large_buff[50000] = '\r';
-    large_buff[50001] = '\n';
-
+    snprintf(head_buff, HEAD_SIZE, "%c %lu %u %zu\nadd foo 0 0 1\r\n", HEAD_READ, (uint64_t)(uintptr_t)large_mr->addr, large_mr->rkey, large_mr->length);
+    snprintf(large_buff, LARGE_SIZE, "1\r\n");
     send_mr(c->id, head_mr);
     recv_msg(c);
 }
@@ -535,20 +533,37 @@ test_rdma_write_request(struct rdma_conn *c) {
     send_mr(c->id, add_reply_mr);
     recv_msg(c);
 
+    if (verbose) {
+        fprintf(stderr, "in write operation id: %d\n", c->id);
+    }
+
     /* test large buff */
     struct ibv_mr *head_mr = rdma_reg_msgs(c->id, head_buff, HEAD_SIZE);
+    if (!head_mr) {
+        perror("rdma_reg_msgs()");
+    }
     struct ibv_mr *large_mr = rdma_reg_write(c->id, large_buff, LARGE_SIZE);
-    memset(large_mr, 0, LARGE_SIZE);
+    if (!large_mr) {
+        perror("rdma_reg_msgs()");
+    }
+    memset(large_buff, 0, LARGE_SIZE);
 
-    snprintf(head_buff, HEAD_SIZE, "%c %lu %u %u\n",
+    snprintf(head_buff, HEAD_SIZE, "%c %lu %u %u\nget foo\r\n",
             '\x88', (uint64_t)(uintptr_t)large_mr->addr, large_mr->rkey, large_mr->length);
+
+    if (verbose) {
+        fprintf(stderr, "in write operation id: %d\n", c->id);
+    }
+
     send_mr(c->id, head_mr);
-    recv_msg(c);
+    if (0 != recv_msg(c)) {
+        fprintf(stderr, "recv ack msg failed!\n");
+    }
 
     if (NULL != strstr(large_buff, "\r\n")) {
-        fprintf(stderr, "the rdma-write operation OK!\n");
+        fprintf(stderr, "the rdma-write operation OK:\n%s\n", large_buff);
     } else {
-        fprintf(stderr, "the rdma-write operation FAILED!\n");
+        fprintf(stderr, "the rdma-write operation FAILED:\n%s\n", large_buff);
     }
 }
 
@@ -563,6 +578,25 @@ test_rdma_read(struct thread_context *ctx) {
     }
 
     test_rdma_read_request(c);
+}
+
+void
+test_rdma_write(struct thread_context *ctx) {
+    struct rdma_conn *c = NULL;
+    struct timespec start,
+                    finish;
+    int i = 0;
+
+    clock_gettime(CLOCK_REALTIME, &start);
+    if ( !(c = build_connection(ctx)) ) {
+        return;
+    }
+
+    if (verbose) {
+        fprintf(stderr, "id: %d\n", c->id);
+    }
+
+    test_rdma_write_request(c);
 }
 
 /***************************************************************************//**
@@ -583,7 +617,7 @@ thread_run(void *arg) {
     } else if (test_write) {
         test_rdma_write(ctx);
     } else if (test_conns) {
-        test_rdma_conns(ctx);
+        test_max_conns(ctx);
     } else {
         test_with_regmem(ctx);
     }
