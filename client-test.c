@@ -405,13 +405,21 @@ test_rdma_read_request(struct rdma_conn *c) {
     struct ibv_mr *head_mr = rdma_reg_msgs(c->id, head_buff, HEAD_SIZE);
     struct ibv_mr *large_mr = rdma_reg_read(c->id, large_buff, large_memory_size);
 
-    snprintf(head_buff, HEAD_SIZE, "%c %lu %u %zu\nadd foo 0 0 1\r\n", HEAD_READ, 
-            (uint64_t)(uintptr_t)large_mr->addr, large_mr->rkey, large_mr->length);
-    snprintf(large_buff, large_memory_size, "1\r\n");
+    snprintf(head_buff, HEAD_SIZE, "%c %lu %u %zu\nadd foo 0 0 %d\r\n", HEAD_READ, 
+            (uint64_t)(uintptr_t)large_mr->addr, large_mr->rkey, large_mr->length, large_memory_size-2);
+    //snprintf(large_buff, large_memory_size, "hello\r\n");
+    large_buff[large_memory_size-2] = '\r';
+    large_buff[large_memory_size-1] = '\n';
+
+
+    struct ibv_mr   *delete_reply_mr = rdma_reg_msgs(c->id, delete_reply, sizeof(delete_reply));
 
     int i = 0;
     for (i = 0; i < request_number; ++i) {
         send_mr(c->id, head_mr);
+        recv_msg(c);
+
+        send_mr(c->id, delete_reply_mr);
         recv_msg(c);
     }
 }
