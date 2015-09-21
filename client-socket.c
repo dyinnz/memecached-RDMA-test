@@ -1,5 +1,3 @@
-#include <stdio.h>
-#include <stdlib.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,16 +9,10 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 
-#include <rdma/rdma_cma.h>
-#include <rdma/rdma_verbs.h>
-
 #include "protocol_binary.h"
 #include "build_cmd.h"
 
 #define BUFF_SIZE 1024
-#define RDMA_MAX_HEAD 16
-#define POLL_WC_SIZE 128
-#define REG_PER_CONN 128
 
 /***************************************************************************//**
  * Testing parameters
@@ -33,9 +25,6 @@ static int      request_number = 100000;
 static int 	if_binary = 0;
 static int      last_time = 1000;    /* secs */
 static int      verbose = 0;
-static int      cq_size = 1024;
-static int      wr_size = 1024;
-static int      max_sge = 8;
 static int 	sock;
 
 
