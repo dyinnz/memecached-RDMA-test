@@ -17,8 +17,8 @@ async-client: async-client.c hashtable.c
 client-socket: client-socket.c build_cmd.c
 	gcc client-socket.c build_cmd.c -o client-socket ${CFLAGS} ${LDFLAGS}
 
-client-bin: client-bin.c
-	gcc client-bin.c -o client-bin ${CFLAGS} ${LDFLAGS}
+client-bin: client-bin.c build_cmd.c
+	gcc client-bin.c build_cmd.c -o client-bin ${CFLAGS} ${LDFLAGS}
 
 clean:
 	rm *.o
