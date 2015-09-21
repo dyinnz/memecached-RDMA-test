@@ -26,15 +26,15 @@ int 	request_size = 100;
  *
  ******************************************************************************/
 
-char 	*get_ascii_noreply 	= 	NULL;
-char 	*add_ascii_noreply 	= 	NULL;
-char 	*set_ascii_noreply 	= 	NULL;
-char 	*replace_ascii_noreply 	= 	NULL;
-char 	*append_ascii_noreply 	= 	NULL;
-char 	*prepend_ascii_noreply 	= 	NULL;
-char 	*incr_ascii_noreply 	= 	NULL;
-char 	*decr_ascii_noreply 	= 	NULL;
-char 	*delete_ascii_noreply 	= 	NULL;
+char 	*get_ascii_noreply;
+char 	*add_ascii_noreply;
+char 	*set_ascii_noreply;
+char 	*replace_ascii_noreply;
+char 	*append_ascii_noreply;
+char 	*prepend_ascii_noreply;
+char 	*incr_ascii_noreply;
+char 	*decr_ascii_noreply;
+char 	*delete_ascii_noreply;
 
 char 	*get_ascii_reply;
 char 	*add_ascii_reply;
@@ -59,19 +59,20 @@ void 	*incr_bin;
 void 	*decr_bin;
 void 	*delete_bin;
 
-static void alloc_message_space(void)
+static void alloc_message_space(int if_binary)
 {
-    get_ascii_noreply = malloc(request_size);
-    add_ascii_noreply = malloc(request_size);
-    set_ascii_noreply = malloc(request_size);
-    replace_ascii_noreply = malloc(request_size);
-    append_ascii_noreply = malloc(request_size);
-    prepend_ascii_noreply = malloc(request_size);
-    incr_ascii_noreply = malloc(request_size);
-    decr_ascii_noreply = malloc(request_size);
-    delete_ascii_noreply = malloc(request_size);
-    
-    get_ascii_reply = malloc(request_size);
+    if (if_binary == 0) {
+	get_ascii_noreply = malloc(request_size);
+	add_ascii_noreply = malloc(request_size);
+	set_ascii_noreply = malloc(request_size);
+	replace_ascii_noreply = malloc(request_size);
+	append_ascii_noreply = malloc(request_size);
+	prepend_ascii_noreply = malloc(request_size);
+	incr_ascii_noreply = malloc(request_size);
+	decr_ascii_noreply = malloc(request_size);
+	delete_ascii_noreply = malloc(request_size);
+	
+	get_ascii_reply = malloc(request_size);
 	add_ascii_reply = malloc(request_size);
 	set_ascii_reply = malloc(request_size);
 	replace_ascii_reply = malloc(request_size);
@@ -80,7 +81,7 @@ static void alloc_message_space(void)
 	incr_ascii_reply = malloc(request_size);
 	decr_ascii_reply = malloc(request_size);
 	delete_ascii_reply = malloc(request_size);
-
+    } else {
 	get_bin = (void *)malloc(request_size);
 	add_bin = (void *)malloc(request_size);
 	set_bin = (void *)malloc(request_size);
@@ -90,6 +91,7 @@ static void alloc_message_space(void)
 	incr_bin = (void *)malloc(request_size);
 	decr_bin = (void *)malloc(request_size);
 	delete_bin = (void *)malloc(request_size);
+    }
 
     return;
 }
@@ -288,7 +290,7 @@ static void init_binary_message(void)
 
 void init_message(int if_binary)
 {
-    alloc_message_space();
+    alloc_message_space(if_binary);
 
     if (if_binary == 0)
 	init_ascii_message();
