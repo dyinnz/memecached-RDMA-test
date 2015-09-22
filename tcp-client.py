@@ -24,6 +24,7 @@ def build_conn(server, port):
 def generate_msg(memory_size):
     add_msg = 'add foo 0 0 ' + str(memory_size) + '\r\n'
     add_msg += 'hello' + '\0'*(memory_size - 5) + '\r\n'
+    print 'add_msg\'s len', len(add_msg)
     return add_msg
 
 def measure_time(func):
@@ -45,7 +46,7 @@ def test_client(conn, add_msg, request):
             print ret
 
         conn.send('get foo\r\n')
-        ret = conn.recv(len(add_msg))
+        ret = conn.recv(len(add_msg) + 300)
         if g_verbose:
             print ret
 
@@ -70,6 +71,7 @@ if __name__ == '__main__':
         elif '-v' == opt:
             g_verbose = True
 
+    print g_memory_size
     msg = generate_msg(g_memory_size)
     conn = build_conn(g_server, g_port)
     test_client(conn, msg, g_request)

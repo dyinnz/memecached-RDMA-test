@@ -31,6 +31,7 @@ static int      buff_per_conn = 4;
 static int      poll_wc_size = 128;
 static int      large_memory_size = 16 * 1024;
 static int      test_get = 0;
+static int      test_large = 0;
 static int      test_read = 0;
 static int      test_write = 0;
 static int      test_conns = 0;
@@ -434,7 +435,7 @@ test_rdma_write_request(struct rdma_conn *c) {
     struct ibv_mr *large_mr = rdma_reg_write(c->id, large_buff, large_memory_size);
     memset(large_buff, 0, large_memory_size);
 
-    snprintf(head_buff, HEAD_SIZE, "%c %lu %u %u\nget foo\r\n",
+    snprintf(head_buff, HEAD_SIZE, "%c %lu %u %zu\nget foo\r\n",
             '\x88', (uint64_t)(uintptr_t)large_mr->addr, large_mr->rkey, large_mr->length);
 
     int i = 0; 
@@ -475,7 +476,7 @@ test_rdma_read_write(struct rdma_conn *c) {
     struct ibv_mr *write_large_mr = rdma_reg_write(c->id, write_large_buff, large_memory_size + 128);
     memset(write_large_buff, 0, large_memory_size);
 
-    snprintf(write_head_buff, HEAD_SIZE, "%c %lu %u %u\nget foo\r\n",
+    snprintf(write_head_buff, HEAD_SIZE, "%c %lu %u %zu\nget foo\r\n",
             '\x88', (uint64_t)(uintptr_t)write_large_mr->addr, write_large_mr->rkey, write_large_mr->length);
 
     struct ibv_mr   *delete_reply_mr = rdma_reg_msgs(c->id, delete_reply, sizeof(delete_reply));
@@ -530,6 +531,24 @@ test_rdma_write(struct thread_context *ctx) {
         (double)(finish.tv_sec-start.tv_sec + (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
 }
 
+void
+test_read_write(struct thread_context *ctx) {
+    struct rdma_conn *c = NULL;
+    struct timespec start,
+                    finish;
+
+    clock_gettime(CLOCK_REALTIME, &start);
+    if ( !(c = build_connection(ctx)) ) {
+        return;
+    }
+
+    test_rdma_read_write(c);
+
+    clock_gettime(CLOCK_REALTIME, &finish);
+    printf("[%d] Cost time: %lf secs\n", ctx->thread_id, 
+        (double)(finish.tv_sec-start.tv_sec + (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
+}
+
 /***************************************************************************//**
  * thread run
  *
@@ -549,6 +568,8 @@ thread_run(void *arg) {
         test_rdma_write(ctx);
     } else if (test_conns) {
         test_max_conns(ctx);
+    } else if (test_large) {
+        test_read_write(ctx);
     } else {
         test_with_regmem(ctx);
     }
@@ -603,6 +624,8 @@ main(int argc, char *argv[]) {
                     test_write = 1;
                 } else if (0 == strcmp("test_conns", optarg)) {
                     test_conns = 1;
+                } else if (0 == strcmp("test_large", optarg)) {
+                    test_large = 1;
                 } else {
                     fprintf(stderr, "Wrong parameter!\n");
                     return -1;
