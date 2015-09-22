@@ -34,6 +34,7 @@ static int      test_get = 0;
 static int      test_read = 0;
 static int      test_write = 0;
 static int      test_conns = 0;
+static int      test_three = 0;
 
 /***************************************************************************//**
  * Testing message
@@ -372,6 +373,42 @@ test_with_regmem(struct thread_context *ctx) {
             (double)(finish.tv_sec-start.tv_sec + (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
 }
 
+#define MAXSIZE 1048876 /* 1M + 300bytes */
+
+static void
+test_add_get(struct thread_context *ctx) {
+    struct rdma_conn *c = NULL;
+    struct timespec start,
+                    finish;
+    int i = 0;
+
+    clock_gettime(CLOCK_REALTIME, &start);
+    if ( !(c = build_connection(ctx)) ) {
+        return;
+    }
+
+    static char add_reply[MAXSIZE] = "add foo 0 0 1\r\n1\r\n";
+    static char get_reply[MAXSIZE] = "get foo\r\n";
+    static char delete_reply[MAXSIZE] = "delete foo\r\n";
+
+    struct ibv_mr   *add_reply_mr = rdma_reg_msgs(c->id, add_reply, large_memory_size);
+    struct ibv_mr   *get_reply_mr = rdma_reg_msgs(c->id, get_reply, large_memory_size);
+    struct ibv_mr   *delete_reply_mr = rdma_reg_msgs(c->id, delete_reply, large_memory_size);
+
+    for (i = 0; i < request_number; ++i) {
+        send_mr(c->id, add_reply_mr);
+        recv_msg(c);
+        send_mr(c->id, get_reply_mr);
+        recv_msg(c);
+        send_mr(c->id, delete_reply_mr);
+        recv_msg(c);
+    }
+
+    clock_gettime(CLOCK_REALTIME, &finish);
+    printf("[%d] Cost time: %lf secs\n", ctx->thread_id, 
+            (double)(finish.tv_sec-start.tv_sec + (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
+}
+
 /***************************************************************************//**
  *  
  ******************************************************************************/
@@ -549,6 +586,8 @@ thread_run(void *arg) {
         test_rdma_write(ctx);
     } else if (test_conns) {
         test_max_conns(ctx);
+    } else if (test_three) {
+        test_add_get(ctx);
     } else {
         test_with_regmem(ctx);
     }
@@ -603,6 +642,8 @@ main(int argc, char *argv[]) {
                     test_write = 1;
                 } else if (0 == strcmp("test_conns", optarg)) {
                     test_conns = 1;
+                } else if (0 == strcmp("test_add_get", optarg)) {
+                    test_three = 1;
                 } else {
                     fprintf(stderr, "Wrong parameter!\n");
                     return -1;
