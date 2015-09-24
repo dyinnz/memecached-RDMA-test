@@ -1,6 +1,8 @@
 #ifndef _BUILD_CMD_
 #define _BUILD_CMD_
 
+#include <stdint.h>
+
 /***************************************************************************//**
  * Ascii message
  *

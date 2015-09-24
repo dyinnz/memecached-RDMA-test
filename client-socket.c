@@ -2,12 +2,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 #include <pthread.h>
 #include <unistd.h>
 
 #include <sys/socket.h>
 #include <sys/types.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include "protocol_binary.h"
 #include "build_cmd.h"
@@ -46,7 +49,6 @@ int socket_build_connection(void)
  ******************************************************************************/
 void *
 test_with_regmem(int if_binary) {
-    struct rdma_conn *c = NULL;
     struct timespec start,
                     finish;
     int i = 0;
@@ -156,8 +158,6 @@ test_with_regmem(int if_binary) {
 
 int init_socket_resources(void)
 {
-    struct sockaddr_in addr;
-    
     sock = socket(AF_INET, SOCK_STREAM, 0);
     if (sock < 0)
     {

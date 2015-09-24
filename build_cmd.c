@@ -7,6 +7,7 @@
 #include <unistd.h>
 
 #include <sys/types.h>
+#include <arpa/inet.h>
 
 #include "build_cmd.h"
 #include "protocol_binary.h"
@@ -189,7 +190,7 @@ static void init_ascii_message(void)
  * ***************************************************************************************/
 static void build_bin_cmd(void *cmd_cache, protocol_binary_command cmd)
 {
-    int keylen, valuelen, extlen, i;
+    int keylen, valuelen, i;
     protocol_binary_request_header *tmp_hd;
     void *body_ptr; // point to the position after the header
     const int HEADER_LENGTH = 24;
@@ -257,6 +258,8 @@ static void build_bin_cmd(void *cmd_cache, protocol_binary_command cmd)
 	    keylen = keylen > 250 ? 250 : keylen;
 	    valuelen = 0;
 	    break;
+	default:
+	    assert(0);
     }
 
     tmp_hd->request.magic = PROTOCOL_BINARY_REQ;
