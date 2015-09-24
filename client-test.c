@@ -11,7 +11,6 @@
 
 #define HEAD_READ '\x88'
 #define HEAD_RWITE 'x99'
-#define BUFF_SIZE 4096
 #define HEAD_READ '\x88'
 #define HEAD_WRITE '\x99'
 
@@ -27,10 +26,12 @@ static int      verbose = 0;
 static int      cq_size = 1024;
 static int      wr_size = 1024;
 static int      max_sge = 16;
-static int      buff_per_conn = 4;
-static int      poll_wc_size = 128;
+static int      buff_per_conn = 256;
+static int      poll_wc_size = 256;
 static int      large_memory_size = 16 * 1024;
+static int      buff_size = 16 * 1024;
 static int      test_get = 0;
+static int      test_large = 0;
 static int      test_read = 0;
 static int      test_write = 0;
 static int      test_conns = 0;
@@ -196,7 +197,7 @@ build_connection(struct thread_context *ctx) {
     c->id->send_cq = ctx->send_cq;
 
     c->buff_list_size = buff_per_conn;
-    c->rsize = BUFF_SIZE;
+    c->rsize = buff_size;
     c->rbuf_list = calloc(c->buff_list_size, sizeof(char*));
     c->rmr_list = calloc(c->buff_list_size, sizeof(struct ibv_mr*));
     c->wr_ctx_list = calloc(c->buff_list_size, sizeof(struct wr_context));
@@ -377,6 +378,11 @@ test_with_regmem(struct thread_context *ctx) {
 
 static void
 test_add_get(struct thread_context *ctx) {
+    //if (large_memory_size < 128) {
+        //fprintf(stderr, "The size of memory is too small\n");
+        //return;
+    //}
+
     struct rdma_conn *c = NULL;
     struct timespec start,
                     finish;
@@ -387,13 +393,18 @@ test_add_get(struct thread_context *ctx) {
         return;
     }
 
-    static char add_reply[MAXSIZE] = "add foo 0 0 1\r\n1\r\n";
-    static char get_reply[MAXSIZE] = "get foo\r\n";
-    static char delete_reply[MAXSIZE] = "delete foo\r\n";
+    
+    static char add_reply[MAXSIZE] = {0};
+    memset(add_reply, 'a', MAXSIZE);
+    snprintf(add_reply, MAXSIZE, "add foo 0 0 %d\r\nhello", large_memory_size);
+    size_t pos = strstr(add_reply, "\r\n") - add_reply + 2;
+    add_reply[pos + large_memory_size] = '\r';
+    add_reply[pos + large_memory_size + 1] = '\n';
+    size_t total_size = pos + large_memory_size + 2;
 
-    struct ibv_mr   *add_reply_mr = rdma_reg_msgs(c->id, add_reply, large_memory_size);
-    struct ibv_mr   *get_reply_mr = rdma_reg_msgs(c->id, get_reply, large_memory_size);
-    struct ibv_mr   *delete_reply_mr = rdma_reg_msgs(c->id, delete_reply, large_memory_size);
+    struct ibv_mr   *add_reply_mr = rdma_reg_msgs(c->id, add_reply, total_size);
+    struct ibv_mr   *get_reply_mr = rdma_reg_msgs(c->id, get_reply, sizeof(get_reply));
+    struct ibv_mr   *delete_reply_mr = rdma_reg_msgs(c->id, delete_reply, sizeof(delete_reply));
 
     for (i = 0; i < request_number; ++i) {
         send_mr(c->id, add_reply_mr);
@@ -471,7 +482,7 @@ test_rdma_write_request(struct rdma_conn *c) {
     struct ibv_mr *large_mr = rdma_reg_write(c->id, large_buff, large_memory_size);
     memset(large_buff, 0, large_memory_size);
 
-    snprintf(head_buff, HEAD_SIZE, "%c %lu %u %u\nget foo\r\n",
+    snprintf(head_buff, HEAD_SIZE, "%c %lu %u %zu\nget foo\r\n",
             '\x88', (uint64_t)(uintptr_t)large_mr->addr, large_mr->rkey, large_mr->length);
 
     int i = 0; 
@@ -512,7 +523,7 @@ test_rdma_read_write(struct rdma_conn *c) {
     struct ibv_mr *write_large_mr = rdma_reg_write(c->id, write_large_buff, large_memory_size + 128);
     memset(write_large_buff, 0, large_memory_size);
 
-    snprintf(write_head_buff, HEAD_SIZE, "%c %lu %u %u\nget foo\r\n",
+    snprintf(write_head_buff, HEAD_SIZE, "%c %lu %u %zu\nget foo\r\n",
             '\x88', (uint64_t)(uintptr_t)write_large_mr->addr, write_large_mr->rkey, write_large_mr->length);
 
     struct ibv_mr   *delete_reply_mr = rdma_reg_msgs(c->id, delete_reply, sizeof(delete_reply));
@@ -567,6 +578,24 @@ test_rdma_write(struct thread_context *ctx) {
         (double)(finish.tv_sec-start.tv_sec + (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
 }
 
+void
+test_read_write(struct thread_context *ctx) {
+    struct rdma_conn *c = NULL;
+    struct timespec start,
+                    finish;
+
+    clock_gettime(CLOCK_REALTIME, &start);
+    if ( !(c = build_connection(ctx)) ) {
+        return;
+    }
+
+    test_rdma_read_write(c);
+
+    clock_gettime(CLOCK_REALTIME, &finish);
+    printf("[%d] Cost time: %lf secs\n", ctx->thread_id, 
+        (double)(finish.tv_sec-start.tv_sec + (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
+}
+
 /***************************************************************************//**
  * thread run
  *
@@ -588,6 +617,8 @@ thread_run(void *arg) {
         test_max_conns(ctx);
     } else if (test_three) {
         test_add_get(ctx);
+    } else if (test_large) {
+        test_read_write(ctx);
     } else {
         test_with_regmem(ctx);
     }
@@ -611,6 +642,7 @@ main(int argc, char *argv[]) {
             "b:"
             "T:"    /* testing type */
             "m:"    /* the size of large memory */
+            "K:" 
     ))) {
         switch (c) {
             case 't':
@@ -644,6 +676,8 @@ main(int argc, char *argv[]) {
                     test_conns = 1;
                 } else if (0 == strcmp("test_add_get", optarg)) {
                     test_three = 1;
+                } else if (0 == strcmp("test_large", optarg)) {
+                    test_large = 1;
                 } else {
                     fprintf(stderr, "Wrong parameter!\n");
                     return -1;
@@ -651,6 +685,9 @@ main(int argc, char *argv[]) {
                 break;
             case 'm':
                 large_memory_size = atoi(optarg);
+                break;
+            case 'K':
+                buff_size = atoi(optarg);
                 break;
             default:
                 assert(0);
