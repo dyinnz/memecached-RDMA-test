@@ -11,7 +11,6 @@
 
 #define HEAD_READ '\x88'
 #define HEAD_RWITE 'x99'
-#define BUFF_SIZE 4096
 #define HEAD_READ '\x88'
 #define HEAD_WRITE '\x99'
 
@@ -30,11 +29,13 @@ static int      max_sge = 16;
 static int      buff_per_conn = 256;
 static int      poll_wc_size = 256;
 static int      large_memory_size = 16 * 1024;
+static int      buff_size = 16 * 1024;
 static int      test_get = 0;
 static int      test_large = 0;
 static int      test_read = 0;
 static int      test_write = 0;
 static int      test_conns = 0;
+static int      test_three = 0;
 
 /***************************************************************************//**
  * Testing message
@@ -196,7 +197,7 @@ build_connection(struct thread_context *ctx) {
     c->id->send_cq = ctx->send_cq;
 
     c->buff_list_size = buff_per_conn;
-    c->rsize = BUFF_SIZE;
+    c->rsize = buff_size;
     c->rbuf_list = calloc(c->buff_list_size, sizeof(char*));
     c->rmr_list = calloc(c->buff_list_size, sizeof(struct ibv_mr*));
     c->wr_ctx_list = calloc(c->buff_list_size, sizeof(struct wr_context));
@@ -364,6 +365,52 @@ test_with_regmem(struct thread_context *ctx) {
             send_mr(c->id, get_reply_mr);
             recv_msg(c);
         }
+        send_mr(c->id, delete_reply_mr);
+        recv_msg(c);
+    }
+
+    clock_gettime(CLOCK_REALTIME, &finish);
+    printf("[%d] Cost time: %lf secs\n", ctx->thread_id, 
+            (double)(finish.tv_sec-start.tv_sec + (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
+}
+
+#define MAXSIZE 1048876 /* 1M + 300bytes */
+
+static void
+test_add_get(struct thread_context *ctx) {
+    //if (large_memory_size < 128) {
+        //fprintf(stderr, "The size of memory is too small\n");
+        //return;
+    //}
+
+    struct rdma_conn *c = NULL;
+    struct timespec start,
+                    finish;
+    int i = 0;
+
+    clock_gettime(CLOCK_REALTIME, &start);
+    if ( !(c = build_connection(ctx)) ) {
+        return;
+    }
+
+    
+    static char add_reply[MAXSIZE] = {0};
+    memset(add_reply, 'a', MAXSIZE);
+    snprintf(add_reply, MAXSIZE, "add foo 0 0 %d\r\nhello", large_memory_size);
+    size_t pos = strstr(add_reply, "\r\n") - add_reply + 2;
+    add_reply[pos + large_memory_size] = '\r';
+    add_reply[pos + large_memory_size + 1] = '\n';
+    size_t total_size = pos + large_memory_size + 2;
+
+    struct ibv_mr   *add_reply_mr = rdma_reg_msgs(c->id, add_reply, total_size);
+    struct ibv_mr   *get_reply_mr = rdma_reg_msgs(c->id, get_reply, sizeof(get_reply));
+    struct ibv_mr   *delete_reply_mr = rdma_reg_msgs(c->id, delete_reply, sizeof(delete_reply));
+
+    for (i = 0; i < request_number; ++i) {
+        send_mr(c->id, add_reply_mr);
+        recv_msg(c);
+        send_mr(c->id, get_reply_mr);
+        recv_msg(c);
         send_mr(c->id, delete_reply_mr);
         recv_msg(c);
     }
@@ -568,6 +615,8 @@ thread_run(void *arg) {
         test_rdma_write(ctx);
     } else if (test_conns) {
         test_max_conns(ctx);
+    } else if (test_three) {
+        test_add_get(ctx);
     } else if (test_large) {
         test_read_write(ctx);
     } else {
@@ -593,6 +642,7 @@ main(int argc, char *argv[]) {
             "b:"
             "T:"    /* testing type */
             "m:"    /* the size of large memory */
+            "K:" 
     ))) {
         switch (c) {
             case 't':
@@ -624,6 +674,8 @@ main(int argc, char *argv[]) {
                     test_write = 1;
                 } else if (0 == strcmp("test_conns", optarg)) {
                     test_conns = 1;
+                } else if (0 == strcmp("test_add_get", optarg)) {
+                    test_three = 1;
                 } else if (0 == strcmp("test_large", optarg)) {
                     test_large = 1;
                 } else {
@@ -633,6 +685,9 @@ main(int argc, char *argv[]) {
                 break;
             case 'm':
                 large_memory_size = atoi(optarg);
+                break;
+            case 'K':
+                buff_size = atoi(optarg);
                 break;
             default:
                 assert(0);
