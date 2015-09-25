@@ -602,7 +602,7 @@ test_read_write(struct thread_context *ctx) {
  ******************************************************************************/
 void *
 thread_run(void *arg) {
-    int thread_id = (int)arg;
+    int thread_id = *((int*)arg);
     struct thread_context *ctx = init_rdma_thread_resources();
     if (!ctx) {
         return NULL;
@@ -710,7 +710,9 @@ main(int argc, char *argv[]) {
         for (i = 0; i < thread_number; ++i) {
             printf("Thread %d\n begin\n", i);
 
-            if (0 != pthread_create(threads+i, NULL, thread_run, (void*)i)) {
+            int *pi = malloc(sizeof(int));
+            *pi = i;
+            if (0 != pthread_create(threads+i, NULL, thread_run, pi)) {
                 return -1;
             }
         }

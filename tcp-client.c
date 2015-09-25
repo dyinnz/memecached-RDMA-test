@@ -31,7 +31,7 @@ int build_connect(const char *server, const char *port) {
     servaddr.sin_family = AF_INET;
     servaddr.sin_port = htons(atoi(port));
 
-    if (inet_pton(AF_INET, pstr_server, &servaddr.sin_addr) <= 0) {
+    if (inet_pton(AF_INET, pstr_server, &servaddr.sin_addr) < 0) {
         perror("inet_pton()");
         return -1;
     }
@@ -57,7 +57,7 @@ void test_speed(int sockfd, int memory_size, int request_number) {
     add_msg[pos + memory_size] = '\r';
     add_msg[pos + memory_size+1] = '\n';
     size_t total_size = pos + memory_size + 2;
-    printf("total_size: %d\n", total_size);
+    printf("total_size: %zd\n", total_size);
 
     int i = 0;
     for (i = 0; i < request_number; ++i) {
