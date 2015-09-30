@@ -28,7 +28,8 @@ static int      request_number = 100000;
 static int 	if_binary = 0;
 static int      last_time = 1000;    /* secs */
 static int      verbose = 0;
-static int 	sock;
+static int 	sock = 0;
+static int 	if_binary = 0;
 
 
 
@@ -48,19 +49,22 @@ int socket_build_connection(void)
  *
  ******************************************************************************/
 void *
-test_with_regmem(int if_binary) {
+test_with_regmem(void *arg) {
     struct timespec start,
                     finish;
     int i = 0;
     void *recv_buff = malloc(BUFF_SIZE);
 
-    clock_gettime(CLOCK_REALTIME, &start);
     if (socket_build_connection()) {
         return NULL;
     }
 
+    init_message(if_binary);
+
     if (if_binary == 0) {
-	printf("ascii noreply:\n");
+	clock_gettime(CLOCK_REALTIME, &start);
+
+	printf("Ascii noreply:\n");
 	
 	for (i = 0; i < request_number; ++i) {
 	    send(sock, get_ascii_noreply, 	request_size, 	0);
@@ -75,10 +79,10 @@ test_with_regmem(int if_binary) {
 	}
 	
 	clock_gettime(CLOCK_REALTIME, &finish);
-	printf("Cost time: %lf secs\n", (double)(finish.tv_sec-start.tv_sec + 
+	printf("Ascii noreply cost time: %lf secs\n\n", (double)(finish.tv_sec-start.tv_sec + 
                 (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
 	
-	printf("\nascii reply:\n");
+	printf("Ascii reply:\n");
 	clock_gettime(CLOCK_REALTIME, &start);
 	
 	for (i = 0; i < request_number; ++i) {
@@ -111,12 +115,12 @@ test_with_regmem(int if_binary) {
 	}
 	
 	clock_gettime(CLOCK_REALTIME, &finish);
-	printf("Cost time: %lf secs\n", (double)(finish.tv_sec-start.tv_sec + 
+	printf("Ascii reply cost time: %lf secs\n\n", (double)(finish.tv_sec-start.tv_sec + 
                 (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
 
     } else {
 
-	printf("bin reply:\n");
+	printf("Binary protocol:\n");
 	clock_gettime(CLOCK_REALTIME, &start);
 
 	for (i = 0; i < request_number; ++i){
@@ -149,7 +153,7 @@ test_with_regmem(int if_binary) {
 	}
 
 	clock_gettime(CLOCK_REALTIME, &finish);
-	printf("Cost time: %lf secs\n", (double)(finish.tv_sec-start.tv_sec +
+	printf("Binary cost time: %lf secs\n\n", (double)(finish.tv_sec-start.tv_sec +
 		(double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
     }
 
@@ -216,22 +220,19 @@ main(int argc, char *argv[]) {
     }
 
     if (if_binary == 1)
-    {
 	if (request_size < BIN_MIX_REQUEST)
 	{
 	    printf("request_size is smaller than BIN_ASCII_REQUEST.\n");
 	    return 0;
 	}
-    } else {
+    else
 	if (request_size < ASCII_MIX_REQUEST)
 	{
 	    printf("request_size is smaller than ASCII_MIX_REQUEST.\n");
 	    return 0;
 	}
-    }
     
-    if (request_size > MEMCACHED_MAX_REQUEST)
-    {
+    if (request_size > MEMCACHED_MAX_REQUEST) {
 	printf("request_size is larger than MEMCACHED_MAX_REQUEST.\n");
 	return 0;
     }
@@ -240,18 +241,9 @@ main(int argc, char *argv[]) {
 	printf("socket fail\n");
 	return 0;
     }
-    init_message(if_binary);
-
-    struct timespec start,
-                    finish;
-    clock_gettime(CLOCK_REALTIME, &start);
 
     test_with_regmem(if_binary);
 
-    clock_gettime(CLOCK_REALTIME, &finish);
-
-    printf("Total cost time: %lf secs\n", (double)(finish.tv_sec-start.tv_sec + 
-                (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
     return 0;
 }
 

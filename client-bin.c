@@ -30,6 +30,7 @@ static int      verbose = 0;
 static int      cq_size = 1024;
 static int      wr_size = 1024;
 static int      max_sge = 8;
+static int 	if_binary = 0;
 
 /***************************************************************************//**
  * Relative resources around connection
@@ -243,16 +244,17 @@ recv_msg(struct rdma_conn *c) {
  *
  ******************************************************************************/
 void *
-test_with_regmem(int if_binary) {
+test_with_regmem(void *arg) {
     struct rdma_conn *c = NULL;
     struct timespec start,
                     finish;
     int i = 0;
 
-    clock_gettime(CLOCK_REALTIME, &start);
     if ( !(c = build_connection()) ) {
         return NULL;
     }
+
+    init_message(if_binary);
 
     if (if_binary == 1) {
 	struct ibv_mr 	*get_mr = 	rdma_reg_msgs( 	c->id, 	get_bin, 	request_size);
@@ -265,7 +267,7 @@ test_with_regmem(int if_binary) {
 	struct ibv_mr   *decr_mr = 	rdma_reg_msgs( 	c->id, 	decr_bin, 	request_size);
 	struct ibv_mr   *delete_mr = 	rdma_reg_msgs( 	c->id, 	delete_bin, 	request_size);
 
-	printf("\nbinary:\n");
+	printf("Binary protocol:\n");
 
 	clock_gettime(CLOCK_REALTIME, &start);
 	
@@ -290,10 +292,10 @@ test_with_regmem(int if_binary) {
 	    recv_msg(c);
 	}
 
-	printf("Binary cost time: %lf secs\n", (double)(finish.tv_sec-start.tv_sec +
+	printf("Binary cost time: %lf secs\n\n", (double)(finish.tv_sec-start.tv_sec +
 	            (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
     } else {
-	printf("\nascii:\n");
+	printf("Ascii noreply:\n");
 	struct ibv_mr 	*get_nr_mr 	= 	rdma_reg_msgs( c->id, 	get_ascii_noreply, 	request_size);
 	struct ibv_mr   *add_nr_mr 	= 	rdma_reg_msgs( c->id, 	add_ascii_noreply, 	request_size);
 	struct ibv_mr   *set_nr_mr 	= 	rdma_reg_msgs( c->id, 	set_ascii_noreply, 	request_size);
@@ -314,8 +316,6 @@ test_with_regmem(int if_binary) {
 	struct ibv_mr   *decr_r_mr 	=       rdma_reg_msgs( c->id, 	decr_ascii_reply, 	request_size);
 	struct ibv_mr   *delete_r_mr 	=       rdma_reg_msgs( c->id, 	delete_ascii_reply, 	request_size);
 
-	printf("\tnoreply:\n");
-
 	clock_gettime(CLOCK_REALTIME, &start);
 
 	for (i = 0; i < request_number; i++) {
@@ -329,10 +329,10 @@ test_with_regmem(int if_binary) {
 	    send_mr(c->id, decr_nr_mr);
 	    send_mr(c->id, delete_nr_mr);
 	}
-	printf("Ascii noreply cost time: %lf secs\n", (double)(finish.tv_sec-start.tv_sec +
+	printf("Ascii noreply cost time: %lf secs\n\n", (double)(finish.tv_sec-start.tv_sec +
 	            (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
 
-	printf("\treply:\n");
+	printf("Ascii reply:\n");
 
 	clock_gettime(CLOCK_REALTIME, &start);
 
@@ -356,13 +356,10 @@ test_with_regmem(int if_binary) {
 	    send_mr(c->id, delete_r_mr);
 	    recv_msg(c);
 	}
-	printf("Ascii reply cost time: %lf secs\n", (double)(finish.tv_sec-start.tv_sec +
+	printf("Ascii reply cost time: %lf secs\n\n", (double)(finish.tv_sec-start.tv_sec +
 	            (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
     }
 
-    clock_gettime(CLOCK_REALTIME, &finish);
-    printf("Total cost time: %lf secs\n", (double)(finish.tv_sec-start.tv_sec + 
-                (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
     return NULL;
 }
 
@@ -373,7 +370,6 @@ test_with_regmem(int if_binary) {
 int 
 main(int argc, char *argv[]) {
     char        c = '\0';
-    int 	if_binary = 0;
     while (-1 != (c = getopt(argc, argv,
             "c:"    /* thread number */
             "r:"    /* request number per thread */
@@ -409,25 +405,30 @@ main(int argc, char *argv[]) {
 		break;
 	    case 'b':
 	        if_binary = 1;
+		break;
             default:
                 assert(0);
         }
     }
 
+    if (if_binary == 1)
+	if (request_size < BINARY_MIX_REQUEST) {
+	    printf("request size is smaller than BINARY_MIX_REQUEST.\n");
+	    return 0;
+	}
+    else
+	if (request_size < ASCII_MIX_REQUEST) {
+	    printf("request size is smaller than ASCII_MIN_REQUEST.\n");
+	    return 0;
+	}
+    
+    if (request_size > MEMCACHED_MAX_REQUEST) {
+	printf("request size is larger than MEMCACHED_MAX_REQUEST.\n");
+
     init_rdma_global_resources();
 
-    struct timespec start,
-                    finish;
-    clock_gettime(CLOCK_REALTIME, &start);
+    test_with_regmem(NULL);
 
-    init_message(if_binary);
-
-    test_with_regmem(if_binary);
-
-    clock_gettime(CLOCK_REALTIME, &finish);
-
-    printf("Cost time: %lf secs\n", (double)(finish.tv_sec-start.tv_sec + 
-                (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
     return 0;
 }
 

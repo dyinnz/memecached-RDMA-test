@@ -1,7 +1,7 @@
 CFLAGS 	:= -Wall -O2
 LDFLAGS := ${LDFLAGS} -lrdmacm -libverbs -lpthread -levent -lrt
 
-all: libevent-server client-test async-client tcp-client
+all: libevent-server client-test async-client tcp-client client-socket client-bin
 
 libevent-server: libevent-server.c
 	gcc libevent-server.c -o libevent-server ${CFLAGS} ${LDFLAGS}
