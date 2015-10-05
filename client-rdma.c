@@ -409,16 +409,17 @@ main(int argc, char *argv[]) {
         }
     }
 
-    if (if_binary == 1)
+    if (if_binary == 1) {
 	if (request_size < BINARY_MIX_REQUEST) {
 	    printf("request size is smaller than BINARY_MIX_REQUEST.\n");
 	    return 0;
 	}
-    else
+    } else {
 	if (request_size < ASCII_MIX_REQUEST) {
 	    printf("request size is smaller than ASCII_MIN_REQUEST.\n");
 	    return 0;
 	}
+    }
     
     if (request_size > MEMCACHED_MAX_REQUEST) {
 	printf("request size is larger than MEMCACHED_MAX_REQUEST.\n");
