@@ -18,7 +18,7 @@
 
 #define ASCII_MIX_REQUEST (28)
 #define BIX_MIX_REQUEST (45)
-#define MEMCACHED_MAX_REQUEST (1024)
+#define MEMCACHED_MAX_REQUEST (1024*1024)
 
 int 	request_size = 100;
 

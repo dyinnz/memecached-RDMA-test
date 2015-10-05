@@ -29,7 +29,6 @@ static int 	if_binary = 0;
 static int      last_time = 1000;    /* secs */
 static int      verbose = 0;
 static int 	sock = 0;
-static int 	if_binary = 0;
 
 
 
@@ -67,19 +66,18 @@ test_with_regmem(void *arg) {
 	printf("Ascii noreply:\n");
 	
 	for (i = 0; i < request_number; ++i) {
-	    send(sock, get_ascii_noreply, 	request_size, 	0);
 	    send(sock, add_ascii_noreply, 	request_size, 	0);
 	    send(sock, set_ascii_noreply, 	request_size, 	0);
-	    send(sock, replace_ascii_noreply, request_size, 	0);
+	    send(sock, replace_ascii_noreply, 	request_size, 	0);
 	    send(sock, append_ascii_noreply, 	request_size, 	0);
-	    send(sock, prepend_ascii_noreply, request_size, 	0);
+	    send(sock, prepend_ascii_noreply, 	request_size, 	0);
 	    send(sock, incr_ascii_noreply, 	request_size, 	0);
 	    send(sock, decr_ascii_noreply, 	request_size, 	0);
 	    send(sock, delete_ascii_noreply, 	request_size, 	0);
 	}
 	
 	clock_gettime(CLOCK_REALTIME, &finish);
-	printf("Ascii noreply cost time: %lf secs\n\n", (double)(finish.tv_sec-start.tv_sec + 
+	printf("Ascii noreply(without GET command) cost time: %lf secs\n\n", (double)(finish.tv_sec-start.tv_sec + 
                 (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
 	
 	printf("Ascii reply:\n");
@@ -115,7 +113,7 @@ test_with_regmem(void *arg) {
 	}
 	
 	clock_gettime(CLOCK_REALTIME, &finish);
-	printf("Ascii reply cost time: %lf secs\n\n", (double)(finish.tv_sec-start.tv_sec + 
+	printf("Ascii reply(with GET command) cost time: %lf secs\n\n", (double)(finish.tv_sec-start.tv_sec + 
                 (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
 
     } else {
@@ -153,7 +151,7 @@ test_with_regmem(void *arg) {
 	}
 
 	clock_gettime(CLOCK_REALTIME, &finish);
-	printf("Binary cost time: %lf secs\n\n", (double)(finish.tv_sec-start.tv_sec +
+	printf("Binary protocol(with GET command) cost time: %lf secs\n\n", (double)(finish.tv_sec-start.tv_sec +
 		(double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
     }
 
@@ -185,6 +183,7 @@ main(int argc, char *argv[]) {
             "t:"    /* last time, secs */
             "p:"    /* listening port */
             "s:"    /* server ip */
+	    "m:"    /* request size */
             "R"     /* whether receive message from server */
             "v"     /* verbose */
 	    "b"     /* binary protocol */
