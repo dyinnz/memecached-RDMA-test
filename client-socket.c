@@ -218,18 +218,19 @@ main(int argc, char *argv[]) {
         }
     }
 
-    if (if_binary == 1)
+    if (if_binary == 1) {
 	if (request_size < BINARY_MIX_REQUEST)
 	{
 	    printf("request_size is smaller than BIN_ASCII_REQUEST.\n");
 	    return 0;
 	}
-    else
+    } else {
 	if (request_size < ASCII_MIX_REQUEST)
 	{
 	    printf("request_size is smaller than ASCII_MIX_REQUEST.\n");
 	    return 0;
 	}
+    }
     
     if (request_size > MEMCACHED_MAX_REQUEST) {
 	printf("request_size is larger than MEMCACHED_MAX_REQUEST.\n");
@@ -241,7 +242,7 @@ main(int argc, char *argv[]) {
 	return 0;
     }
 
-    test_with_regmem(if_binary);
+    test_with_regmem(NULL);
 
     return 0;
 }
