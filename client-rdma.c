@@ -423,6 +423,8 @@ main(int argc, char *argv[]) {
     
     if (request_size > MEMCACHED_MAX_REQUEST) {
 	printf("request size is larger than MEMCACHED_MAX_REQUEST.\n");
+	return 0;
+    }
 
     init_rdma_global_resources();
 
