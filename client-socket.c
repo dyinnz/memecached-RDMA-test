@@ -55,6 +55,7 @@ test_with_regmem(void *arg) {
     void *recv_buff = malloc(BUFF_SIZE);
 
     if (socket_build_connection()) {
+	printf("Build connection fail!\n");
         return NULL;
     }
 
