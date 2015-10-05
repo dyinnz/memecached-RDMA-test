@@ -18,10 +18,12 @@ tcp-client: tcp-client.c
 	gcc tcp-client.c -o tcp-client ${CFLAGS} ${LDFLAGS}
 
 client-socket: client-socket.c build_cmd.c
-	gcc client-socket.c build_cmd.c -o client-socket ${CFLAGS} ${LDFLAGS}
+	gcc client-socket.c build_cmd.c -o client-socket ${CFLAGS} -lrt
+#	gcc client-socket.c build_cmd.c -o client-socket ${CFLAGS} ${LDFLAGS}
 
-client-bin: client-bin.c build_cmd.c
-	gcc client-bin.c build_cmd.c -o client-bin ${CFLAGS} ${LDFLAGS}
+client-rdma: client-rdma.c build_cmd.c
+	gcc client-rdma.c build_cmd.c -o client-rdma ${CFLAGS} -lrdmacm -libverbs -lrt 
+#	gcc client-rdma.c build_cmd.c -o client-rdma ${CFLAGS} ${LDFLAGS}
 
 clean:
 	rm *.o
