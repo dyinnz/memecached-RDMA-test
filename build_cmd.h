@@ -43,7 +43,7 @@ extern void 	*delete_bin;
 
 #define ASCII_MIX_REQUEST (28)
 #define BIN_MIX_REQUEST (45)
-#define MEMCACHED_MAX_REQUEST (1024)
+#define MEMCACHED_MAX_REQUEST (1024*1024)
 
 extern void init_message(int if_binary);
 
