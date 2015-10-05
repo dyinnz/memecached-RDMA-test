@@ -219,7 +219,7 @@ main(int argc, char *argv[]) {
     }
 
     if (if_binary == 1)
-	if (request_size < BIN_MIX_REQUEST)
+	if (request_size < BINARY_MIX_REQUEST)
 	{
 	    printf("request_size is smaller than BIN_ASCII_REQUEST.\n");
 	    return 0;
