@@ -292,6 +292,7 @@ test_with_regmem(void *arg) {
 	    recv_msg(c);
 	}
 
+	clock_gettime(CLOCK_REALTIME, &finish);
 	printf("Binary protocol(with GET command) cost time: %lf secs\n\n", (double)(finish.tv_sec-start.tv_sec +
 	            (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
     } else {
@@ -327,6 +328,8 @@ test_with_regmem(void *arg) {
 	    send_mr(c->id, decr_nr_mr);
 	    send_mr(c->id, delete_nr_mr);
 	}
+
+	clock_gettime(CLOCK_REALTIME, &finish);
 	printf("Ascii noreply(without GET command) cost time: %lf secs\n\n", (double)(finish.tv_sec-start.tv_sec +
 	            (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
 
@@ -354,6 +357,8 @@ test_with_regmem(void *arg) {
 	    send_mr(c->id, delete_r_mr);
 	    recv_msg(c);
 	}
+
+	clock_gettime(CLOCK_REALTIME, &finish);
 	printf("Ascii reply(with GET command) cost time: %lf secs\n\n", (double)(finish.tv_sec-start.tv_sec +
 	            (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
     }
