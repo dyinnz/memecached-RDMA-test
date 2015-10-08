@@ -58,7 +58,7 @@ int replace_ascii_reply_len;
 int append_ascii_reply_len;
 int prepend_ascii_reply_len;
 int incr_ascii_reply_len;
-int deci_ascii_reply_len;
+int decr_ascii_reply_len;
 int delete_ascii_reply_len;
 
 /******************************************************************************
@@ -76,6 +76,7 @@ void 	*delete_bin;
 
 int get_bin_len;
 int add_bin_len;
+int set_bin_len;
 int replace_bin_len;
 int append_bin_len;
 int prepend_bin_len;
@@ -87,7 +88,6 @@ int delete_bin_len;
 static void alloc_message_space(int if_binary)
 {
     if (if_binary == 0) {
-	get_ascii_noreply = malloc(request_size);
 	add_ascii_noreply = malloc(request_size);
 	set_ascii_noreply = malloc(request_size);
 	replace_ascii_noreply = malloc(request_size);
@@ -299,7 +299,7 @@ static void build_bin_cmd(void *cmd_cache, protocol_binary_command cmd, int* req
     for (i = 0 ; i < keylen + valuelen; i++)
 	write_to_buff(&body_ptr, "1", 1);
 
-    *request_size = body_ptr - cache_header;
+    *request_len = body_ptr - cache_header;
 
     return;
 }

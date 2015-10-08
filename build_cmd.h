@@ -37,6 +37,7 @@ extern int decr_ascii_noreply_len;
 extern int delete_ascii_noreply_len;
 
 extern int get_ascii_reply_len;
+extern int set_ascii_reply_len;
 extern int add_ascii_reply_len;
 extern int replace_ascii_reply_len;
 extern int append_ascii_reply_len;
