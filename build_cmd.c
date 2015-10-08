@@ -155,6 +155,9 @@ static void build_ascii_cmd(char *cmd_cache, char *cmd_name, int cmd_length, boo
 
     if (if_reply == false)
 	keylen -= 8;
+
+    if (strcmp(cmd_name, "incr") || strcmp(cmd_name, "decr"))
+	bodylen = 1;
 	
     write_to_buff((void**)&cmd_cache, cmd_name, cmd_length);
 
