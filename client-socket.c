@@ -67,14 +67,14 @@ test_with_regmem(void *arg) {
 	printf("Ascii noreply:\n");
 	
 	for (i = 0; i < request_number; ++i) {
-	    send(sock, add_ascii_noreply, 	request_size, 	0);
-	    send(sock, set_ascii_noreply, 	request_size, 	0);
-	    send(sock, replace_ascii_noreply, 	request_size, 	0);
-	    send(sock, append_ascii_noreply, 	request_size, 	0);
-	    send(sock, prepend_ascii_noreply, 	request_size, 	0);
-	    send(sock, incr_ascii_noreply, 	request_size, 	0);
-	    send(sock, decr_ascii_noreply, 	request_size, 	0);
-	    send(sock, delete_ascii_noreply, 	request_size, 	0);
+	    send(sock, add_ascii_noreply, 	add_ascii_noreply_len, 		0);
+	    send(sock, set_ascii_noreply, 	set_ascii_noreply_len, 		0);
+	    send(sock, replace_ascii_noreply, 	replace_ascii_noreply_len, 	0);
+	    send(sock, append_ascii_noreply, 	append_ascii_noreply_len, 	0);
+	    send(sock, prepend_ascii_noreply, 	prepend_ascii_noreply_len, 	0);
+	    send(sock, incr_ascii_noreply, 	incr_ascii_noreply_len, 	0);
+	    send(sock, decr_ascii_noreply, 	decr_ascii_noreply_len, 	0);
+	    send(sock, delete_ascii_noreply, 	delete_ascii_noreply_len, 	0);
 	}
 	
 	clock_gettime(CLOCK_REALTIME, &finish);
@@ -85,31 +85,31 @@ test_with_regmem(void *arg) {
 	clock_gettime(CLOCK_REALTIME, &start);
 	
 	for (i = 0; i < request_number; ++i) {
-	    send(sock, get_ascii_reply, 	request_size, 	0);
+	    send(sock, get_ascii_reply, 	get_ascii_reply_len, 	0);
 	    recv(sock, recv_buff, BUFF_SIZE, 0);
 
-	    send(sock, add_ascii_reply, 	request_size, 	0);
+	    send(sock, add_ascii_reply, 	add_ascii_reply_len, 	0);
 	    recv(sock, recv_buff, BUFF_SIZE, 0);
 
-	    send(sock, set_ascii_reply, 	request_size, 	0);
+	    send(sock, set_ascii_reply, 	set_ascii_reply_len, 	0);
 	    recv(sock, recv_buff, BUFF_SIZE, 0);
 
-	    send(sock, replace_ascii_reply, 	request_size, 	0);
+	    send(sock, replace_ascii_reply, 	replace_ascii_reply_len, 	0);
 	    recv(sock, recv_buff, BUFF_SIZE, 0);
 
-	    send(sock, append_ascii_reply, 	request_size, 	0);
+	    send(sock, append_ascii_reply, 	append_ascii_reply_len, 	0);
 	    recv(sock, recv_buff, BUFF_SIZE, 0);
 
-	    send(sock, prepend_ascii_reply, 	request_size, 	0);
+	    send(sock, prepend_ascii_reply, 	prepend_ascii_reply_len, 	0);
 	    recv(sock, recv_buff, BUFF_SIZE, 0);
 
-	    send(sock, incr_ascii_reply, 	request_size, 	0);
+	    send(sock, incr_ascii_reply, 	incr_ascii_reply_len, 	0);
 	    recv(sock, recv_buff, BUFF_SIZE, 0);
 
-	    send(sock, decr_ascii_reply, 	request_size, 	0);
+	    send(sock, decr_ascii_reply, 	decr_ascii_reply_len, 	0);
 	    recv(sock, recv_buff, BUFF_SIZE, 0);
 
-	    send(sock, delete_ascii_reply, 	request_size, 	0);
+	    send(sock, delete_ascii_reply, 	delete_ascii_reply_len, 	0);
 	    recv(sock, recv_buff, BUFF_SIZE, 0);
 	}
 	
@@ -123,31 +123,31 @@ test_with_regmem(void *arg) {
 	clock_gettime(CLOCK_REALTIME, &start);
 
 	for (i = 0; i < request_number; ++i){
-	    send(sock, get_bin, 	request_size, 	0);
+	    send(sock, get_bin, 	get_bin_len, 		0);
 	    recv(sock, recv_buff, BUFF_SIZE, 0);
 
-	    send(sock, add_bin, 	request_size, 	0);
+	    send(sock, add_bin, 	add_bin_len, 		0);
 	    recv(sock, recv_buff, BUFF_SIZE, 0);
 
-	    send(sock, set_bin, 	request_size, 	0);
+	    send(sock, set_bin, 	set_bin_len, 		0);
 	    recv(sock, recv_buff, BUFF_SIZE, 0);
 
-	    send(sock, replace_bin, 	request_size, 	0);
+	    send(sock, replace_bin, 	replace_bin_len, 	0);
 	    recv(sock, recv_buff, BUFF_SIZE, 0);
 
-	    send(sock, append_bin, 	request_size, 	0);
+	    send(sock, append_bin, 	append_bin_len, 	0);
 	    recv(sock, recv_buff, BUFF_SIZE, 0);
 
-	    send(sock, prepend_bin, 	request_size, 	0);
+	    send(sock, prepend_bin, 	prepend_bin_len, 	0);
 	    recv(sock, recv_buff, BUFF_SIZE, 0);
 
-	    send(sock, incr_bin, 	request_size, 	0);
+	    send(sock, incr_bin, 	incr_bin_len, 		0);
 	    recv(sock, recv_buff, BUFF_SIZE, 0);
 
-	    send(sock, decr_bin, 	request_size, 	0);
+	    send(sock, decr_bin, 	decr_bin_len, 		0);
 	    recv(sock, recv_buff, BUFF_SIZE, 0);
 
-	    send(sock, delete_bin, 	request_size, 	0);
+	    send(sock, delete_bin, 	delete_bin_len, 	0);
 	    recv(sock, recv_buff, BUFF_SIZE, 0);
 	}
 

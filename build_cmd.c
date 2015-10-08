@@ -23,7 +23,6 @@ int 	request_size = 100;
  *
  ******************************************************************************/
 
-char 	*get_ascii_noreply;
 char 	*add_ascii_noreply;
 char 	*set_ascii_noreply;
 char 	*replace_ascii_noreply;
@@ -43,6 +42,25 @@ char 	*incr_ascii_reply;
 char 	*decr_ascii_reply;
 char 	*delete_ascii_reply;
 
+int add_ascii_noreply_len;
+int set_ascii_noreply_len;
+int replace_ascii_noreply_len;
+int append_ascii_noreply_len;
+int prepend_ascii_noreply_len;
+int incr_ascii_noreply_len;
+int decr_ascii_noreply_len;
+int delete_ascii_noreply_len;
+
+int get_ascii_reply_len;
+int add_ascii_reply_len;
+int set_ascii_reply_len;
+int replace_ascii_reply_len;
+int append_ascii_reply_len;
+int prepend_ascii_reply_len;
+int incr_ascii_reply_len;
+int deci_ascii_reply_len;
+int delete_ascii_reply_len;
+
 /******************************************************************************
  * Bin message
  * ****************************************************************************/
@@ -55,6 +73,16 @@ void 	*prepend_bin;
 void 	*incr_bin;
 void 	*decr_bin;
 void 	*delete_bin;
+
+int get_bin_len;
+int add_bin_len;
+int replace_bin_len;
+int append_bin_len;
+int prepend_bin_len;
+int incr_bin_len;
+int decr_bin_len;
+int delete_bin_len;
+
 
 static void alloc_message_space(int if_binary)
 {
@@ -105,9 +133,10 @@ static void write_to_buff(void **buff, void *data, int size)
  * Build ascii cmd
  *
  * ***********************************************************************/
-static void build_ascii_cmd(char *cmd_cache, char *cmd_name, int cmd_length, bool if_extra, bool if_delta, bool if_reply)
+static void build_ascii_cmd(char *cmd_cache, char *cmd_name, int cmd_length, bool if_extra, bool if_delta, bool if_reply, int* request_len)
 {
     int keylen, bodylen, i;
+    char *cache_header = cmd_cache;
 
     if (if_extra == true) // add set replace append prepend
 	keylen = request_size - cmd_length - 12; // useless charactor
@@ -153,30 +182,31 @@ static void build_ascii_cmd(char *cmd_cache, char *cmd_name, int cmd_length, boo
 	write_to_buff((void**)&cmd_cache, "\r\n", 2);
     }
 
+    *request_len = cmd_cache - cache_header;
+
     return;
 }
 
 static void init_ascii_message(void)
 {
-    build_ascii_cmd( 	get_ascii_noreply, 	"get", 		3, 	false, 	false, 	false);
-    build_ascii_cmd( 	add_ascii_noreply, 	"add", 		3, 	true, 	false, 	false);
-    build_ascii_cmd( 	set_ascii_noreply, 	"set", 		3, 	true, 	false, 	false);
-    build_ascii_cmd( 	replace_ascii_noreply, 	"replace", 	7, 	true, 	false, 	false);
-    build_ascii_cmd( 	append_ascii_noreply, 	"append", 	6, 	true, 	false, 	false);
-    build_ascii_cmd( 	prepend_ascii_noreply, 	"prepend", 	7, 	true, 	false, 	false);
-    build_ascii_cmd( 	incr_ascii_noreply, 	"incr", 	4, 	false, 	true, 	false);
-    build_ascii_cmd( 	decr_ascii_noreply, 	"decr", 	4, 	false, 	true, 	false);
-    build_ascii_cmd( 	delete_ascii_noreply, 	"delete", 	6, 	false, 	false, 	false);
+    build_ascii_cmd( 	add_ascii_noreply, 	"add", 		3, 	true, 	false, 	false, &add_ascii_noreply_len);
+    build_ascii_cmd( 	set_ascii_noreply, 	"set", 		3, 	true, 	false, 	false, &set_ascii_noreply_len);
+    build_ascii_cmd( 	replace_ascii_noreply, 	"replace", 	7, 	true, 	false, 	false, &replace_ascii_noreply_len);
+    build_ascii_cmd( 	append_ascii_noreply, 	"append", 	6, 	true, 	false, 	false, &append_ascii_noreply_len);
+    build_ascii_cmd( 	prepend_ascii_noreply, 	"prepend", 	7, 	true, 	false, 	false, &prepend_ascii_noreply_len);
+    build_ascii_cmd( 	incr_ascii_noreply, 	"incr", 	4, 	false, 	true, 	false, &incr_ascii_noreply_len);
+    build_ascii_cmd( 	decr_ascii_noreply, 	"decr", 	4, 	false, 	true, 	false, &decr_ascii_noreply_len);
+    build_ascii_cmd( 	delete_ascii_noreply, 	"delete", 	6, 	false, 	false, 	false, &delete_ascii_noreply_len);
 
-    build_ascii_cmd( 	get_ascii_reply, 	"get", 		3, 	false, 	false, 	true);
-    build_ascii_cmd( 	add_ascii_reply, 	"add", 		3, 	true, 	false, 	true);
-    build_ascii_cmd( 	set_ascii_reply, 	"set", 		3, 	true, 	false, 	true);
-    build_ascii_cmd( 	replace_ascii_reply, 	"replace", 	7, 	true, 	false, 	true);
-    build_ascii_cmd( 	append_ascii_reply, 	"append", 	6, 	true, 	false, 	true);
-    build_ascii_cmd( 	prepend_ascii_reply, 	"prepend", 	7, 	true, 	false, 	true);
-    build_ascii_cmd( 	incr_ascii_reply, 	"incr", 	4, 	false, 	true, 	true);
-    build_ascii_cmd( 	decr_ascii_reply, 	"decr", 	4, 	false, 	true, 	true);
-    build_ascii_cmd( 	delete_ascii_reply, 	"delete", 	6, 	false, 	false, 	true);
+    build_ascii_cmd( 	get_ascii_reply, 	"get", 		3, 	false, 	false, 	true, &get_ascii_reply_len);
+    build_ascii_cmd( 	add_ascii_reply, 	"add", 		3, 	true, 	false, 	true, &add_ascii_reply_len);
+    build_ascii_cmd( 	set_ascii_reply, 	"set", 		3, 	true, 	false, 	true, &set_ascii_reply_len);
+    build_ascii_cmd( 	replace_ascii_reply, 	"replace", 	7, 	true, 	false, 	true, &replace_ascii_reply_len);
+    build_ascii_cmd( 	append_ascii_reply, 	"append", 	6, 	true, 	false, 	true, &append_ascii_reply_len);
+    build_ascii_cmd( 	prepend_ascii_reply, 	"prepend", 	7, 	true, 	false, 	true, &prepend_ascii_reply_len);
+    build_ascii_cmd( 	incr_ascii_reply, 	"incr", 	4, 	false, 	true, 	true, &incr_ascii_reply_len);
+    build_ascii_cmd( 	decr_ascii_reply, 	"decr", 	4, 	false, 	true, 	true, &decr_ascii_reply_len);
+    build_ascii_cmd( 	delete_ascii_reply, 	"delete", 	6, 	false, 	false, 	true, &delete_ascii_reply_len);
 }
 
 
@@ -184,11 +214,12 @@ static void init_ascii_message(void)
  * Build binary cmd
  *
  * ***************************************************************************************/
-static void build_bin_cmd(void *cmd_cache, protocol_binary_command cmd)
+static void build_bin_cmd(void *cmd_cache, protocol_binary_command cmd, int* request_len)
 {
     int keylen, valuelen, i;
     protocol_binary_request_header *tmp_hd;
     void *body_ptr; // point to the position after the header
+    void *cache_header = cmd_cache;
     const int HEADER_LENGTH = 24;
 
     tmp_hd = (protocol_binary_request_header *)cmd_cache;
@@ -268,20 +299,22 @@ static void build_bin_cmd(void *cmd_cache, protocol_binary_command cmd)
     for (i = 0 ; i < keylen + valuelen; i++)
 	write_to_buff(&body_ptr, "1", 1);
 
+    *request_size = body_ptr - cache_header;
+
     return;
 }
 
 static void init_binary_message(void)
 {
-    build_bin_cmd( 	get_bin, 	PROTOCOL_BINARY_CMD_GET);
-    build_bin_cmd( 	add_bin, 	PROTOCOL_BINARY_CMD_ADD);
-    build_bin_cmd( 	set_bin, 	PROTOCOL_BINARY_CMD_SET);
-    build_bin_cmd( 	replace_bin, 	PROTOCOL_BINARY_CMD_REPLACE);
-    build_bin_cmd( 	append_bin, 	PROTOCOL_BINARY_CMD_APPEND);
-    build_bin_cmd( 	prepend_bin, 	PROTOCOL_BINARY_CMD_PREPEND);
-    build_bin_cmd( 	incr_bin, 	PROTOCOL_BINARY_CMD_INCREMENT);
-    build_bin_cmd( 	decr_bin, 	PROTOCOL_BINARY_CMD_DECREMENT);
-    build_bin_cmd( 	delete_bin, 	PROTOCOL_BINARY_CMD_DELETE);
+    build_bin_cmd( 	get_bin, 	PROTOCOL_BINARY_CMD_GET, 	&get_bin_len);
+    build_bin_cmd( 	add_bin, 	PROTOCOL_BINARY_CMD_ADD, 	&add_bin_len);
+    build_bin_cmd( 	set_bin, 	PROTOCOL_BINARY_CMD_SET, 	&set_bin_len);
+    build_bin_cmd( 	replace_bin, 	PROTOCOL_BINARY_CMD_REPLACE, 	&replace_bin_len);
+    build_bin_cmd( 	append_bin, 	PROTOCOL_BINARY_CMD_APPEND, 	&append_bin_len);
+    build_bin_cmd( 	prepend_bin, 	PROTOCOL_BINARY_CMD_PREPEND, 	&prepend_bin_len);
+    build_bin_cmd( 	incr_bin, 	PROTOCOL_BINARY_CMD_INCREMENT, 	&incr_bin_len);
+    build_bin_cmd( 	decr_bin, 	PROTOCOL_BINARY_CMD_DECREMENT, 	&decr_bin_len);
+    build_bin_cmd( 	delete_bin, 	PROTOCOL_BINARY_CMD_DELETE, 	&delete_bin_len);
 
     return;
 }
