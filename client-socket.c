@@ -15,7 +15,7 @@
 #include "protocol_binary.h"
 #include "build_cmd.h"
 
-#define BUFF_SIZE 1024
+#define BUFF_SIZE 1048576
 
 /***************************************************************************//**
  * Testing parameters
@@ -76,14 +76,26 @@ test_with_regmem(void *arg) {
 	    send(sock, decr_ascii_noreply, 	decr_ascii_noreply_len, 	0);
 	    send(sock, delete_ascii_noreply, 	delete_ascii_noreply_len, 	0);
 	}
+
+    send(sock, get_ascii_reply, get_ascii_reply_len, 0);
+    recv(sock, recv_buff, BUFF_SIZE, 0);
 	
 	clock_gettime(CLOCK_REALTIME, &finish);
 	printf("Ascii noreply(without GET command) cost time: %lf secs\n\n", (double)(finish.tv_sec-start.tv_sec + 
                 (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
-	
+/*
 	printf("Ascii reply:\n");
+    puts(get_ascii_reply);
+    puts(add_ascii_reply);
+    puts(set_ascii_reply);
+    puts(replace_ascii_reply);
+    puts(append_ascii_reply);
+    puts(prepend_ascii_reply);
+    puts(incr_ascii_reply);
+    puts(decr_ascii_reply);
+    puts(delete_ascii_reply);
+
 	clock_gettime(CLOCK_REALTIME, &start);
-	
 	for (i = 0; i < request_number; ++i) {
 	    send(sock, get_ascii_reply, 	get_ascii_reply_len, 	0);
 	    recv(sock, recv_buff, BUFF_SIZE, 0);
@@ -115,8 +127,7 @@ test_with_regmem(void *arg) {
 	
 	clock_gettime(CLOCK_REALTIME, &finish);
 	printf("Ascii reply(with GET command) cost time: %lf secs\n\n", (double)(finish.tv_sec-start.tv_sec + 
-                (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
-
+                (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));*/
     } else {
 
 	printf("Binary protocol:\n");

@@ -88,34 +88,34 @@ int delete_bin_len;
 static void alloc_message_space(int if_binary)
 {
     if (if_binary == 0) {
-	add_ascii_noreply = malloc(request_size);
-	set_ascii_noreply = malloc(request_size);
-	replace_ascii_noreply = malloc(request_size);
-	append_ascii_noreply = malloc(request_size);
-	prepend_ascii_noreply = malloc(request_size);
-	incr_ascii_noreply = malloc(request_size);
-	decr_ascii_noreply = malloc(request_size);
-	delete_ascii_noreply = malloc(request_size);
+	add_ascii_noreply = calloc(1, request_size);
+	set_ascii_noreply = calloc(1, request_size);
+	replace_ascii_noreply = calloc(1, request_size);
+	append_ascii_noreply = calloc(1, request_size);
+	prepend_ascii_noreply = calloc(1, request_size);
+	incr_ascii_noreply = calloc(1, request_size);
+	decr_ascii_noreply = calloc(1, request_size);
+	delete_ascii_noreply = calloc(1, request_size);
 	
-	get_ascii_reply = malloc(request_size);
-	add_ascii_reply = malloc(request_size);
-	set_ascii_reply = malloc(request_size);
-	replace_ascii_reply = malloc(request_size);
-	append_ascii_reply = malloc(request_size);
-	prepend_ascii_reply = malloc(request_size);
-	incr_ascii_reply = malloc(request_size);
-	decr_ascii_reply = malloc(request_size);
-	delete_ascii_reply = malloc(request_size);
+	get_ascii_reply = calloc(1, request_size);
+	add_ascii_reply = calloc(1, request_size);
+	set_ascii_reply = calloc(1, request_size);
+	replace_ascii_reply = calloc(1, request_size);
+	append_ascii_reply = calloc(1, request_size);
+	prepend_ascii_reply = calloc(1, request_size);
+	incr_ascii_reply = calloc(1, request_size);
+	decr_ascii_reply = calloc(1, request_size);
+	delete_ascii_reply = calloc(1, request_size);
     } else {
-	get_bin = (void *)malloc(request_size);
-	add_bin = (void *)malloc(request_size);
-	set_bin = (void *)malloc(request_size);
-	replace_bin = (void *)malloc(request_size);
-	append_bin = (void *)malloc(request_size);
-	prepend_bin = (void *)malloc(request_size);
-	incr_bin = (void *)malloc(request_size);
-	decr_bin = (void *)malloc(request_size);
-	delete_bin = (void *)malloc(request_size);
+	get_bin = (void *)calloc(1, request_size);
+	add_bin = (void *)calloc(1, request_size);
+	set_bin = (void *)calloc(1, request_size);
+	replace_bin = (void *)calloc(1, request_size);
+	append_bin = (void *)calloc(1, request_size);
+	prepend_bin = (void *)calloc(1, request_size);
+	incr_bin = (void *)calloc(1, request_size);
+	decr_bin = (void *)calloc(1, request_size);
+	delete_bin = (void *)calloc(1, request_size);
     }
 
     return;
@@ -137,52 +137,57 @@ static void build_ascii_cmd(char *cmd_cache, char *cmd_name, int cmd_length, boo
 {
     int keylen, bodylen, i;
     char *cache_header = cmd_cache;
+    char bodylen_str[8]; // length of 1048576
+    int bodylen_len;
 
     if (if_extra == true) // add set replace append prepend
-	keylen = request_size - cmd_length - 12; // useless charactor
+	    keylen = request_size - cmd_length - 17; // useless charactor
     else if (if_delta == true) // incr decr
-	keylen = request_size - cmd_length - 4; // useless charactor
+	    keylen = request_size - cmd_length - 4; // useless charactor
     else // delete
-	keylen = request_size - cmd_length - 3; // useless cahractor
+	    keylen = request_size - cmd_length - 3; // useless cahractor
 
     if (keylen > 250) {
-	bodylen = keylen - 250;
-	keylen = 250;
+	    bodylen = keylen - 250;
+	    keylen = 250;
     } else {
-	bodylen = 1;
-	keylen -= 1;
+	    bodylen = 1;
+	    keylen -= 1;
     }
 
     if (if_reply == false)
-	keylen -= 8;
+	    keylen -= 8;
 
-    if (strcmp(cmd_name, "incr") || strcmp(cmd_name, "decr"))
-	bodylen = 1;
+    if (strcmp(cmd_name, "incr") == 0 || strcmp(cmd_name, "decr") == 0)
+        bodylen = 1;
 	
     write_to_buff((void**)&cmd_cache, cmd_name, cmd_length);
 
     write_to_buff((void**)&cmd_cache, " ", 1);
     for (i = 0; i < keylen; i++)
-	write_to_buff((void**)&cmd_cache, "1", 1);
+	    write_to_buff((void**)&cmd_cache, "1", 1);
 	
-    if (if_extra == true) // add set replace append prepend
-	write_to_buff((void**)&cmd_cache, " 0 0 1", 6);
+    if (if_extra == true) {// add set replace append prepend
+	    write_to_buff((void**)&cmd_cache, " 0 0 ", 5);
+        bodylen_len = snprintf(bodylen_str, 8, "%d", bodylen);
+        write_to_buff((void**)&cmd_cache, bodylen_str, bodylen_len);
+    }
 
     if (if_delta == true) {// incr decr
-	write_to_buff((void**)&cmd_cache, " ", 1);
-	for (i = 0; i < bodylen; i++)
-	    write_to_buff((void**)&cmd_cache, "1", 1);
+	    write_to_buff((void**)&cmd_cache, " ", 1);
+	    for (i = 0; i < bodylen; i++)
+	        write_to_buff((void**)&cmd_cache, "1", 1);
     }
 	    
     if (if_reply == false)
-	write_to_buff((void**)&cmd_cache, " noreply", 8);
+	    write_to_buff((void**)&cmd_cache, " noreply", 8);
 	
     write_to_buff((void**)&cmd_cache, "\r\n", 2);
     
     if (if_extra == true) { // add set replace append prepend
-	for (i = 1; i < keylen; i++)
-	    write_to_buff((void**)&cmd_cache, "1", 1);
-	write_to_buff((void**)&cmd_cache, "\r\n", 2);
+	    for (i = 0; i < bodylen; i++)
+	        write_to_buff((void**)&cmd_cache, "1", 1);
+	    write_to_buff((void**)&cmd_cache, "\r\n", 2);
     }
 
     *request_len = cmd_cache - cache_header;
