@@ -306,7 +306,7 @@ test_with_regmem(void *arg) {
 	struct ibv_mr   *decr_nr_mr 	= 	rdma_reg_msgs( c->id, 	decr_ascii_noreply, 	request_size);
 	struct ibv_mr   *delete_nr_mr 	= 	rdma_reg_msgs( c->id, 	delete_ascii_noreply, 	request_size);
 
-	struct ibv_mr   *get_r_mr 	=       rdma_reg_msgs( c->id, 	get_ascii_reply, 	get_ascii_reply_len);/*
+	struct ibv_mr   *get_r_mr 	=       rdma_reg_msgs( c->id, 	get_ascii_reply, 	get_ascii_reply_len);
 	struct ibv_mr   *add_r_mr 	=       rdma_reg_msgs( c->id, 	add_ascii_reply, 	add_ascii_reply_len);
 	struct ibv_mr   *set_r_mr 	=       rdma_reg_msgs( c->id, 	set_ascii_reply, 	set_ascii_reply_len);
 	struct ibv_mr   *replace_r_mr 	=       rdma_reg_msgs( c->id, 	replace_ascii_reply, 	replace_ascii_reply_len);
@@ -315,7 +315,7 @@ test_with_regmem(void *arg) {
 	struct ibv_mr   *incr_r_mr 	=       rdma_reg_msgs( c->id, 	incr_ascii_reply, 	incr_ascii_reply_len);
 	struct ibv_mr   *decr_r_mr 	=       rdma_reg_msgs( c->id, 	decr_ascii_reply, 	decr_ascii_reply_len);
 	struct ibv_mr   *delete_r_mr 	=       rdma_reg_msgs( c->id, 	delete_ascii_reply,     delete_ascii_reply_len);
-*/
+
 	clock_gettime(CLOCK_REALTIME, &start);
 
 	for (i = 0; i < request_number; i++) {
@@ -328,24 +328,28 @@ test_with_regmem(void *arg) {
 	    send_mr(c->id, decr_nr_mr);
 	    send_mr(c->id, delete_nr_mr);
 	}
-    send_mr(c->id, get_r_mr);
-    recv_msg(c);
+	
+	// make sure the server recv everything
+	send_mr(c->id, get_r_mr);
+	recv_msg(c);
 
 	clock_gettime(CLOCK_REALTIME, &finish);
 	printf("Ascii noreply(without GET command) cost time: %lf secs\n\n", (double)(finish.tv_sec-start.tv_sec +
 	            (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
-/*
-	printf("Ascii reply:\n");
 
-    puts(get_ascii_reply);
-    puts(add_ascii_reply);
-    puts(set_ascii_reply);
-    puts(replace_ascii_reply);
-    puts(prepend_ascii_reply);
-    puts(append_ascii_reply);
-    puts(incr_ascii_reply);
-    puts(decr_ascii_reply);
-    puts(delete_ascii_reply);
+	printf("Ascii reply:\n");
+	
+/*
+	puts(get_ascii_reply);
+	puts(add_ascii_reply);
+	puts(set_ascii_reply);
+	puts(replace_ascii_reply);
+	puts(prepend_ascii_reply);
+	puts(append_ascii_reply);
+	puts(incr_ascii_reply);
+	puts(decr_ascii_reply);
+	puts(delete_ascii_reply);
+*/
 
 	clock_gettime(CLOCK_REALTIME, &start);
 
@@ -372,7 +376,7 @@ test_with_regmem(void *arg) {
 
 	clock_gettime(CLOCK_REALTIME, &finish);
 	printf("Ascii reply(with GET command) cost time: %lf secs\n\n", (double)(finish.tv_sec-start.tv_sec +
-	            (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));*/
+	            (double)(finish.tv_nsec - start.tv_nsec)/1000000000 ));
     }
 
     return NULL;
